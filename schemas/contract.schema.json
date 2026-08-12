@@ -3,7 +3,7 @@
   "$id": "https://semantic-prompt-contract.local/schemas/contract.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schema_version", "contract_version", "id", "description", "system_instruction", "input", "response", "operations"],
+  "required": ["$schema", "schema_version", "contract_version", "id", "description", "system_instruction", "user_message_template", "rule_line_template", "input", "response", "operations"],
   "properties": {
     "$schema": {"type": "string"},
     "schema_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
@@ -12,17 +12,19 @@
     "description": {"type": "string", "minLength": 1},
     "system_instruction": {"type": "string", "minLength": 1},
     "unstructured_system_instruction": {"type": "string", "minLength": 1},
+    "user_message_template": {"type": "string", "minLength": 1},
+    "rule_line_template": {"type": "string", "minLength": 1},
     "input": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["parameter", "required", "start_delimiter", "end_delimiter", "trust"],
+      "required": ["parameter", "required", "encoding", "trust"],
       "properties": {
         "parameter": {"type": "string"},
         "required": {"type": "boolean"},
-        "start_delimiter": {"type": "string"},
-        "end_delimiter": {"type": "string"},
+        "encoding": {"const": "json_string"},
         "trust": {"const": "untrusted_data"},
-        "max_characters": {"type": "integer", "minimum": 1}
+        "max_characters": {"type": "integer", "minimum": 1},
+        "max_characters_unit": {"const": "unicode_scalar"}
       }
     },
     "response": {
@@ -57,7 +59,11 @@
                 "type": {"const": "string"},
                 "required": {"type": "boolean"},
                 "trim": {"type": "boolean"},
-                "default": {"type": "string"}
+                "trim_characters": {"const": "ascii_whitespace"},
+                "default": {"type": "string"},
+                "max_length": {"type": "integer", "minimum": 1},
+                "max_length_unit": {"const": "unicode_scalar"},
+                "pattern": {"type": "string", "minLength": 1}
               }
             }
           },

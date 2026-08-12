@@ -1,4 +1,4 @@
-# Source inventory for 1.0.0
+# Source inventory and migration record
 
 This inventory was captured from OpenKeyboard `5908188bbb72f6a1f7838035fd96829843b74143` and LLM Gateway `8671339b6476acf90af8045754481f9a4cffbe39` before migration.
 
@@ -27,10 +27,10 @@ LLM Gateway PR #10 removed five OpenKeyboard-specific tester presets from `publi
 
 ## Parameters and safety boundaries
 
-- `translate` inserts a trimmed target-language description and retains the existing generic fallback when a diagnostic does not supply one.
+- `translate` encodes an ASCII-whitespace-trimmed target-language label in `operation_parameters` and retains the existing generic fallback when a diagnostic does not supply one. Version 2.0.0 rejects multiline, control-bearing, overlong, or non-language-label values; the value is never interpolated into operation rules.
 - Rewrite styles are stable semantic operation identifiers whose wire identifier remains `rewrite`.
-- Structured source input remains inside `<input_text>` delimiters and is explicitly classified as untrusted data.
-- Bounded suggestion input retains the existing 500-character prefix behavior.
+- Version 1.0.0 retained the original `<input_text>` delimiter rendering. Version 2.0.0 replaces it with a canonical JSON-string `source_text` value so delimiter-like, newline-bearing, or instruction-like content remains encoded data.
+- Bounded suggestion input retains the existing 500-character prefix behavior, with character limits explicitly defined as Unicode scalar values in both JavaScript and Swift.
 - Unknown packs, operations, or parameters are rejected by the shared renderers.
 - Structured response parsing remains intentionally tolerant of the legacy aliases already accepted by OpenKeyboard; canonical response schemas describe the preferred contract without removing that compatibility.
 
@@ -40,4 +40,4 @@ LLM Gateway PR #10 removed five OpenKeyboard-specific tester presets from `publi
 - OpenKeyboard core request-shape/parser tests, UI-target architecture tests, deterministic builds, opt-in live gateway diagnostics, and real-extension routes.
 - Gateway Vitest compatibility tests, admin UI static tests, TypeScript build, Docker runtime smoke, and an opt-in live locally configured model route.
 
-The two product-branded system-role descriptions were made generic during extraction so the package is reusable. Message roles, order, operation rules, schemas, parameters, bounds, and response-format behavior are otherwise preserved. This semantic-only wording change is covered by consumer request-shape tests and live proof remains required before release.
+Version 1.0.0 retained the two product-branded writing system-role descriptions while extracting the behavior. Version 2.0.0 makes those descriptions platform-neutral and centralizes the complete user-message templates in canonical JSON. Message roles, order, operation rules, schemas, parameters, bounds, and response-format behavior otherwise remain compatible. The system-message and safe-input rendering changes are intentionally classified as breaking, covered by full operation golden fixtures, and require consumer deterministic and live proof before release.
