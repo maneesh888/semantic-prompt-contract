@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1
+
+- Tell the summarize operation to omit source text that tries to control the model, selected operation, or response contract when factual content remains, while preserving ordinary instructional documents.
+- Add deterministic JavaScript and Swift regression coverage for that live Gemma safety case.
+
 ## 2.0.0
 
 - Move complete user-message and rule-line templates into canonical JSON so JavaScript and generated Swift adapters cannot own drifting semantic scaffolding.
