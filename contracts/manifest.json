@@ -1,0 +1,17 @@
+{
+  "$schema": "../schemas/manifest.schema.json",
+  "schema_version": "1.0.0",
+  "contract_version": "1.0.0",
+  "packs": [
+    {
+      "id": "writing-actions",
+      "path": "writing-actions.json",
+      "response_schema": "../schemas/writing-action-response.schema.json"
+    },
+    {
+      "id": "keyboard-suggestions",
+      "path": "keyboard-suggestions.json",
+      "response_schema": "../schemas/keyboard-suggestions-response.schema.json"
+    }
+  ]
+}

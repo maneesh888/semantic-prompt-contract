@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://semantic-prompt-contract.local/schemas/contract.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "contract_version", "id", "description", "system_instruction", "input", "response", "operations"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schema_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "contract_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+    "description": {"type": "string", "minLength": 1},
+    "system_instruction": {"type": "string", "minLength": 1},
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parameter", "required", "start_delimiter", "end_delimiter", "trust"],
+      "properties": {
+        "parameter": {"type": "string"},
+        "required": {"type": "boolean"},
+        "start_delimiter": {"type": "string"},
+        "end_delimiter": {"type": "string"},
+        "trust": {"const": "untrusted_data"},
+        "max_characters": {"type": "integer", "minimum": 1}
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "schema", "top_level_example"],
+      "properties": {
+        "format": {"enum": ["json_object", "prompt_only_json"]},
+        "schema": {"type": "string"},
+        "top_level_example": {"type": "string", "minLength": 2}
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "wire_operation_id", "description", "parameters", "max_tokens", "result_types", "rules", "no_change_behavior"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+          "wire_operation_id": {"type": ["string", "null"]},
+          "description": {"type": "string", "minLength": 1},
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "type", "required"],
+              "properties": {
+                "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+                "type": {"const": "string"},
+                "required": {"type": "boolean"},
+                "trim": {"type": "boolean"},
+                "default": {"type": "string"}
+              }
+            }
+          },
+          "max_tokens": {"type": "integer", "minimum": 1},
+          "result_types": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "rules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "no_change_behavior": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

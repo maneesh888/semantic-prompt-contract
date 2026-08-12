@@ -1,0 +1,38 @@
+{
+  "$schema": "../schemas/contract.schema.json",
+  "schema_version": "1.0.0",
+  "contract_version": "1.0.0",
+  "id": "keyboard-suggestions",
+  "description": "Compact corrections and optional next-text suggestions for bounded keyboard context.",
+  "system_instruction": "You are a writing assistant. Return strict JSON only.",
+  "input": {
+    "parameter": "bounded_context",
+    "required": true,
+    "start_delimiter": "Context:\n",
+    "end_delimiter": "",
+    "trust": "untrusted_data",
+    "max_characters": 500
+  },
+  "response": {
+    "format": "prompt_only_json",
+    "schema": "../schemas/keyboard-suggestions-response.schema.json",
+    "top_level_example": "{\"corrections\":[{\"label\":\"Correct capitalization\",\"original\":\"i\",\"replacement\":\"I\",\"explanation\":\"Capitalize the pronoun I.\",\"category\":\"capitalization\"}],\"predictions\":[{\"label\":\"Suggestion\",\"text\":\"apple\",\"kind\":\"nextWord\"}]}"
+  },
+  "operations": [
+    {
+      "id": "keyboard_suggestions",
+      "wire_operation_id": null,
+      "description": "Analyze bounded keyboard context for compact corrections and predictions.",
+      "parameters": [],
+      "max_tokens": 1200,
+      "result_types": ["correction", "prediction"],
+      "rules": [
+        "Analyze this bounded keyboard context and return strict JSON only. Do not include markdown or explanations outside JSON.",
+        "Return corrections and predictions separately using this schema:",
+        "{{response_example}}",
+        "Corrections modify existing text. Predictions are optional next-word/phrase/synonym suggestions. Keep replacements and prediction text short for a compact keyboard bar."
+      ],
+      "no_change_behavior": "Return empty corrections and predictions arrays when no usable suggestion exists."
+    }
+  ]
+}

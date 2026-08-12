@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://semantic-prompt-contract.local/schemas/keyboard-suggestions-response.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["corrections", "predictions"],
+  "properties": {
+    "corrections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["label", "original", "replacement"],
+        "properties": {
+          "label": {"type": "string", "minLength": 1},
+          "original": {"type": "string", "minLength": 1},
+          "replacement": {"type": "string", "minLength": 1},
+          "explanation": {"type": "string"},
+          "category": {"type": "string"}
+        }
+      }
+    },
+    "predictions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["label", "text"],
+        "properties": {
+          "label": {"type": "string", "minLength": 1},
+          "text": {"type": "string", "minLength": 1},
+          "kind": {"type": "string"}
+        }
+      }
+    },
+    "corrected_text": {"type": "string"}
+  }
+}

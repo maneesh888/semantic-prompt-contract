@@ -1,0 +1,15 @@
+{
+  "operation": "fix_grammar",
+  "results": [
+    {
+      "id": "correction-1",
+      "type": "correction",
+      "title": "Capitalization",
+      "text": "Replace the lowercase pronoun.",
+      "original": "i",
+      "replacement": "I",
+      "confidence": 0.99
+    }
+  ],
+  "corrected_text": "I agree."
+}
