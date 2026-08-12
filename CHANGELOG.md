@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.2
+
+- Restrict correction operations to definite, local mechanical errors and explicitly forbid stylistic synonym rewrites such as `reply` to `respond`.
+- Require exact source substrings and atomic correction spans of at most three words, with uncertain changes omitted.
+- Apply the same correction-versus-prediction boundary to compact keyboard suggestions.
+
+This is a patch release because it clarifies the existing atomic-correction behavior without changing identifiers, parameters, schemas, or response fields.
+
 ## 2.0.1
 
 - Tell the summarize operation to omit source text that tries to control the model, selected operation, or response contract when factual content remains, while preserving ordinary instructional documents.

@@ -26,7 +26,7 @@ final class SemanticPromptContractTests: XCTestCase {
             let first = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             let second = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             XCTAssertEqual(first, second)
-            XCTAssertEqual(first.contractVersion, "2.0.1")
+            XCTAssertEqual(first.contractVersion, "2.0.2")
             XCTAssertEqual(first.messages.map(\.role), ["system", "user"])
             XCTAssertEqual(first.responseFormatType, "json_object")
         }
@@ -70,6 +70,26 @@ final class SemanticPromptContractTests: XCTestCase {
         XCTAssertEqual(rendered.operationID, "keyboard_suggestions")
         XCTAssertTrue(rendered.messages.last?.content.hasSuffix("{\"bounded_context\":\"\(String(repeating: "a", count: 500))\"}") == true)
         XCTAssertNil(rendered.responseFormatType)
+    }
+
+    func testCorrectionPromptsForbidStylisticRewritesAndRequireAtomicSpans() throws {
+        let writing = try XCTUnwrap(
+            SemanticPromptContract.renderWriting(
+                operationID: "fix_grammar",
+                input: "Our support team definitely needs clearer notes before they reply to the customer."
+            ).messages.last?.content
+        )
+        XCTAssertTrue(writing.contains("This is an edit-card task, not a rewrite task."))
+        XCTAssertTrue(writing.contains("changing \"reply\" to \"respond\" is forbidden"))
+        XCTAssertTrue(writing.contains("Prefer one word"))
+        XCTAssertTrue(writing.contains("If uncertain, omit the item."))
+
+        let suggestions = try XCTUnwrap(
+            SemanticPromptContract.renderKeyboardSuggestions(input: "reply to the customer").messages.last?.content
+        )
+        XCTAssertTrue(suggestions.contains("never more than three words"))
+        XCTAssertTrue(suggestions.contains("replace valid wording with a synonym"))
+        XCTAssertTrue(suggestions.contains("Put optional next-word, phrase, or synonym ideas in predictions instead."))
     }
 
     func testSummarizeExcludesModelControlAttemptsAndPreservesProcedures() throws {
