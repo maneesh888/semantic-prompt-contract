@@ -1,15 +1,16 @@
 {
   "$schema": "../schemas/contract.schema.json",
-  "schema_version": "1.0.0",
-  "contract_version": "1.0.0",
+  "schema_version": "2.0.0",
+  "contract_version": "2.0.0",
   "id": "keyboard-suggestions",
   "description": "Compact corrections and optional next-text suggestions for bounded keyboard context.",
   "system_instruction": "You are a writing assistant. Return strict JSON only.",
+  "user_message_template": "{{numbered_rules}}\n{\"bounded_context\":{{input_json}}}",
+  "rule_line_template": "{{rule}}",
   "input": {
     "parameter": "bounded_context",
     "required": true,
-    "start_delimiter": "Context:\n",
-    "end_delimiter": "",
+    "encoding": "json_string",
     "trust": "untrusted_data",
     "max_characters": 500
   },
