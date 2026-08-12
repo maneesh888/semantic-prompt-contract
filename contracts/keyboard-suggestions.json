@@ -1,7 +1,7 @@
 {
   "$schema": "../schemas/contract.schema.json",
   "schema_version": "2.0.0",
-  "contract_version": "2.0.1",
+  "contract_version": "2.0.2",
   "id": "keyboard-suggestions",
   "description": "Compact corrections and optional next-text suggestions for bounded keyboard context.",
   "system_instruction": "You are a writing assistant. Return strict JSON only.",
@@ -32,7 +32,9 @@
         "Analyze this bounded keyboard context and return strict JSON only. Do not include markdown or explanations outside JSON.",
         "Return corrections and predictions separately using this schema:",
         "{{response_example}}",
-        "Corrections modify existing text. Predictions are optional next-word/phrase/synonym suggestions. Keep replacements and prediction text short for a compact keyboard bar."
+        "A correction fixes one definite local error in existing text: a misspelling, capitalization or punctuation mistake, missing or extra short function word, or unambiguous agreement or word-form error. Copy original exactly from the context and keep replacement to the smallest possible edit, normally one word and never more than three words.",
+        "Do not use corrections to rewrite, improve style, change tone, increase formality, or replace valid wording with a synonym. Put optional next-word, phrase, or synonym ideas in predictions instead. If uncertain whether existing text is wrong, omit the correction.",
+        "Keep correction replacements and prediction text short for a compact keyboard bar."
       ],
       "no_change_behavior": "Return empty corrections and predictions arrays when no usable suggestion exists."
     }
