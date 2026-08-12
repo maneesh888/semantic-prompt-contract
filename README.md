@@ -6,7 +6,7 @@ The package owns operation identifiers, descriptions, parameters, semantic instr
 
 ## Canonical format and layout
 
-Human-reviewable JSON in `contracts/` is canonical. `contracts/manifest.json` pins the contract and schema versions and lists independently extensible packs. `schemas/` contains the canonical-file and response schemas. `fixtures/` contains gateway diagnostics plus valid and invalid response examples. `src/index.js` is the side-effect-free JavaScript renderer. The Swift source under `adapters/swift/` is generated from the JSON and must never be edited manually.
+Human-reviewable JSON in `contracts/` is canonical. `contracts/manifest.json` pins the contract and schema versions and lists independently extensible packs. `schemas/` contains the canonical-file and response schemas. `fixtures/` contains gateway diagnostics plus valid and invalid response examples. `src/index.js` is the side-effect-free JavaScript renderer. The Swift source under `adapters/swift/` and browser preset bundle under `adapters/browser/` are generated from the JSON and must never be edited manually.
 
 Rendering accepts a pack, operation identifier, source input, and validated parameters. It returns ordered system/user messages, the response-format requirement, maximum token metadata, and the exact contract version. It performs no network or application side effects. Source input is always treated as untrusted data and is inserted only at the selected pack's stable input boundary.
 

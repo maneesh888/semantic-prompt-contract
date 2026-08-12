@@ -8,6 +8,7 @@ const required = [
   'contracts/keyboard-suggestions.json',
   'schemas/contract.schema.json',
   'adapters/swift/Sources/SemanticPromptContract/SemanticPromptContract.generated.swift',
+  'adapters/browser/semanticPromptContract.generated.js',
 ];
 const files = new Set(report.files.map((entry) => entry.path));
 for (const path of required) {
