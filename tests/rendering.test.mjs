@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { gatewayPromptPresets, operationIds, render, SemanticPromptContractError } from '../src/index.js';
+
+const readJSON = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
 
 test('every operation renders deterministic ordered messages and metadata', () => {
   for (const operationId of operationIds()) {
@@ -49,4 +53,17 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Structured operation · Rewrite',
   ]);
   assert.ok(presets.every((preset) => preset.contractVersion === '1.0.0'));
+});
+
+test('representative user messages retain the pre-migration golden renderings', () => {
+  for (const fixture of readJSON('fixtures/rendering/equivalence.json')) {
+    const rendered = render({
+      packId: fixture.pack_id,
+      operationId: fixture.operation_id,
+      input: fixture.input,
+      parameters: fixture.parameters,
+    });
+    const digest = createHash('sha256').update(rendered.messages.at(-1).content).digest('hex');
+    assert.equal(digest, fixture.user_sha256, fixture.operation_id);
+  }
 });

@@ -1,0 +1,10 @@
+[
+  {"pack_id":"writing-actions","operation_id":"fix_grammar","input":"i has a apple","parameters":{},"user_sha256":"269dd6734ebabbba033dbf62e2e642db12e1e8d49b7bcad46c4911f7bf72abfa"},
+  {"pack_id":"writing-actions","operation_id":"rewrite_core","input":"unclear text","parameters":{},"user_sha256":"d82d5ba06532812fbe92a7fc662d8e1bac1d1a3e83cbcdd1200176c958f80e6c"},
+  {"pack_id":"writing-actions","operation_id":"rewrite","input":"unclear text","parameters":{},"user_sha256":"da65605bca92f33b8b03954558867db5d5b3eea4c8c75ff8334d70daf5767c80"},
+  {"pack_id":"writing-actions","operation_id":"improve","input":"unclear text","parameters":{},"user_sha256":"8886bb7694d75b8fe5730f614286d05e9d1f343aed37faca30c703d35e56b828"},
+  {"pack_id":"writing-actions","operation_id":"summarize","input":"long text","parameters":{},"user_sha256":"bc40693ca8931a8109e55d077c53bd09be635382c0bde0468ee6a5c076b665c0"},
+  {"pack_id":"writing-actions","operation_id":"translate","input":"Good morning","parameters":{"target_language":"Dutch"},"user_sha256":"f81cd0ae89f644ce423f90fc8ba54303643bfcb8a75d4810c260c443a401a50a"},
+  {"pack_id":"writing-actions","operation_id":"continue_writing","input":"Once upon a time","parameters":{},"user_sha256":"d00acecfeff7a035ba27ed8d8807ba39f7243d7000c5597e750f7ff16158ad2f"},
+  {"pack_id":"keyboard-suggestions","operation_id":"keyboard_suggestions","input":"hello","parameters":{},"user_sha256":"93352f3393d169d0602671a48678683a8b4ac8731cb3c26648bb869a5063f437"}
+]
