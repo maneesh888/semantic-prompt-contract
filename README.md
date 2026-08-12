@@ -8,7 +8,7 @@ The package owns operation identifiers, descriptions, parameters, semantic instr
 
 Human-reviewable JSON in `contracts/` is canonical. It owns the complete user-message template, rule-line template, system instructions, operation rules, parameters, and input encoding; renderers do not maintain independent semantic scaffolding. `contracts/manifest.json` pins the contract and schema versions and lists independently extensible packs. `schemas/` contains the canonical-file and response schemas. `fixtures/` contains gateway diagnostics, full operation-equivalence cases, and valid and invalid response examples. `src/index.js` is the side-effect-free JavaScript renderer. The Swift source under `adapters/swift/` and browser preset bundle under `adapters/browser/` are generated from the JSON and must never be edited manually.
 
-Rendering accepts a pack, operation identifier, source input, and validated parameters. It returns ordered system/user messages, the response-format requirement, maximum token metadata, and the exact contract version. It performs no network or application side effects. Source input is always treated as untrusted data and encoded as a JSON string inside the canonical input object, so quotes, newlines, delimiter-like text, and instruction-like content cannot escape into prompt scaffolding. Dynamic parameters are trimmed and validated against their canonical length and character constraints before substitution.
+Rendering accepts a pack, operation identifier, source input, and validated parameters. It returns ordered system/user messages, the response-format requirement, maximum token metadata, and the exact contract version. It performs no network or application side effects. Source input and dynamic parameters are always treated as untrusted data and encoded inside the canonical JSON input object, so quotes, newlines, placeholder-like text, delimiter-like text, and instruction-like content cannot escape into prompt scaffolding. Dynamic parameters are trimmed and validated against their canonical length and character constraints before encoding; they are never interpolated into operation rules. Character limits use Unicode scalar values in every runtime.
 
 ## Versioning
 
@@ -26,8 +26,8 @@ npm run check
 swift test
 ```
 
-`npm run check` validates canonical JSON against its schema, validates response fixtures, checks operation uniqueness and parameter rejection, exercises a per-operation input regression matrix, verifies complete golden coverage and generated-adapter synchronization, and inspects the package artifact. Consumer repositories retain parser, UI, transport, build, and opt-in live-model checks.
+Together, `npm run check` and `swift test` validate canonical JSON against its schema, validate response fixtures, check operation uniqueness and parameter rejection, exercise a per-operation input regression matrix, check placeholder-bearing input and Unicode-scalar boundaries, compare JavaScript-generated golden messages with Swift byte for byte, verify generated-adapter synchronization, and inspect the package artifact. Consumer repositories retain parser, UI, transport, build, and opt-in live-model checks.
 
 ## Security
 
-Contracts and fixtures contain no credentials or provider routing. Renderers never perform I/O beyond loading immutable package resources, never contact a model, and never log inputs. Input remains a JSON-string value even when it contains JSON, Markdown fences, former delimiter text, newlines, or attempts to override the selected operation.
+Contracts and fixtures contain no credentials or provider routing. Renderers never perform I/O beyond loading immutable package resources, never contact a model, and never log inputs. Input and parameter values remain JSON data even when they contain JSON, Markdown fences, former delimiter text, template placeholders, newlines, or attempts to override the selected operation.

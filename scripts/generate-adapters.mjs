@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { gatewayPromptPresets } from '../src/index.js';
+import { gatewayPromptPresets, render } from '../src/index.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const check = process.argv.includes('--check');
@@ -9,6 +9,7 @@ const readJSON = (path) => JSON.parse(readFileSync(join(root, path), 'utf8'));
 const manifest = readJSON('contracts/manifest.json');
 const writing = readJSON('contracts/writing-actions.json');
 const suggestions = readJSON('contracts/keyboard-suggestions.json');
+const equivalence = readJSON('fixtures/rendering/equivalence.json');
 
 function swift(value) {
   return JSON.stringify(value).replaceAll('\\(', '\\\\(');
@@ -26,24 +27,21 @@ function parameterCode(operation) {
     const pattern = definition.pattern === undefined ? 'nil' : swift(definition.pattern);
     lines.push(`        let ${definition.name} = try validatedParameter(parameters[${swift(definition.name)}], defaultValue: ${fallback}, required: ${definition.required}, maxLength: ${maxLength}, pattern: ${pattern}, operationID: ${swift(operation.id)}, parameter: ${swift(definition.name)})`);
   }
+  const entries = definitions.length === 0
+    ? ':'
+    : definitions.map((definition) => `${swift(definition.name)}: ${definition.name}`).join(', ');
+  lines.push(`        let validatedParameters = compactParameters([${entries}])`);
   return lines;
 }
 
-function ruleExpression(rule, operation) {
-  let result = swift(rule);
-  for (const parameter of operation.parameters) {
-    const expression = parameter.default === undefined
-      ? `${parameter.name} ?? ""`
-      : `${parameter.name} ?? ${swift(parameter.default)}`;
-    result = result.replaceAll(`{{${parameter.name}}}`, `\\(${expression})`);
-  }
-  return result;
+function ruleExpression(rule) {
+  return swift(rule);
 }
 
 const cases = writing.operations.map((operation) => {
   const params = parameterCode(operation);
   const rules = operation.rules.map((rule) => `            ${ruleExpression(rule, operation)}`).join(',\n');
-  return `    case ${swift(operation.id)}:\n${params.join('\n')}\n        return renderWriting(operationID: ${swift(operation.id)}, wireOperationID: ${swift(operation.wire_operation_id)}, input: input, rules: [\n${rules}\n        ], maxTokens: ${operation.max_tokens})`;
+  return `    case ${swift(operation.id)}:\n${params.join('\n')}\n        return renderWriting(operationID: ${swift(operation.id)}, wireOperationID: ${swift(operation.wire_operation_id)}, input: input, parameters: validatedParameters, rules: [\n${rules}\n        ], maxTokens: ${operation.max_tokens})`;
 }).join('\n');
 
 const swiftSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.
@@ -92,7 +90,7 @@ ${cases}
     }
 
     public static func renderKeyboardSuggestions(input: String) -> SemanticPromptRendering {
-        let bounded = String(input.prefix(${suggestions.input.max_characters}))
+        let bounded = String(input.unicodeScalars.prefix(${suggestions.input.max_characters}))
         let responseExample = ${swift(suggestions.response.top_level_example)}
         let rules = [
 ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).join(',\n')}
@@ -119,7 +117,7 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
         )
     }
 
-    private static func renderWriting(operationID: String, wireOperationID: String, input: String, rules: [String], maxTokens: Int) -> SemanticPromptRendering {
+    private static func renderWriting(operationID: String, wireOperationID: String, input: String, parameters: [String: String], rules: [String], maxTokens: Int) -> SemanticPromptRendering {
         let numberedRules = rules.enumerated().map {
             substitute(writingRuleLineTemplate, values: ["index": String($0.offset + 1), "rule": $0.element])
         }.joined(separator: "\\n")
@@ -128,7 +126,8 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
             "operation": wireOperationID,
             "response_example": responseExample,
             "numbered_rules": numberedRules,
-            "input_json": jsonStringLiteral(input)
+            "input_json": jsonStringLiteral(input),
+            "parameters_json": jsonStringDictionaryLiteral(parameters)
         ])
         return SemanticPromptRendering(
             contractVersion: version,
@@ -151,7 +150,7 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
         if required && selected == nil {
             throw SemanticPromptContractError.missingParameter(operation: operationID, parameter: parameter)
         }
-        if let selected, let maxLength, selected.count > maxLength {
+        if let selected, let maxLength, selected.unicodeScalars.count > maxLength {
             throw SemanticPromptContractError.invalidParameter(operation: operationID, parameter: parameter)
         }
         if let selected, let pattern, selected.range(of: pattern, options: .regularExpression) == nil {
@@ -161,9 +160,34 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
     }
 
     private static func substitute(_ template: String, values: [String: String]) -> String {
-        values.reduce(template) { result, entry in
-            result.replacingOccurrences(of: "{{\\(entry.key)}}", with: entry.value)
+        let expression = try! NSRegularExpression(pattern: #"\\{\\{([a-z_]+)\\}\\}"#)
+        let range = NSRange(template.startIndex..<template.endIndex, in: template)
+        var output = ""
+        var cursor = template.startIndex
+        for match in expression.matches(in: template, range: range) {
+            guard let placeholderRange = Range(match.range(at: 0), in: template),
+                  let nameRange = Range(match.range(at: 1), in: template) else { continue }
+            output.append(contentsOf: template[cursor..<placeholderRange.lowerBound])
+            let name = String(template[nameRange])
+            guard let value = values[name] else {
+                preconditionFailure("Missing semantic prompt template value: \\(name)")
+            }
+            output.append(value)
+            cursor = placeholderRange.upperBound
         }
+        output.append(contentsOf: template[cursor...])
+        return output
+    }
+
+    private static func compactParameters(_ values: [String: String?]) -> [String: String] {
+        values.compactMapValues { $0 }
+    }
+
+    private static func jsonStringDictionaryLiteral(_ values: [String: String]) -> String {
+        let entries = values.keys.sorted().map { key in
+            jsonStringLiteral(key) + ":" + jsonStringLiteral(values[key]!)
+        }
+        return "{" + entries.joined(separator: ",") + "}"
     }
 
     private static func jsonStringLiteral(_ value: String) -> String {
@@ -200,21 +224,51 @@ const renderedSwiftSource = swiftSource.replace(
 );
 const output = join(root, 'adapters/swift/Sources/SemanticPromptContract/SemanticPromptContract.generated.swift');
 const browserOutput = join(root, 'adapters/browser/semanticPromptContract.generated.js');
+const swiftParityOutput = join(root, 'adapters/swift/Tests/SemanticPromptContractTests/SemanticPromptContractParity.generated.swift');
 const browserSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.\n` +
   `globalThis.SemanticPromptContractBrowser=Object.freeze(${JSON.stringify({
     contractVersion: manifest.contract_version,
     gatewayPromptPresets: gatewayPromptPresets(),
   })});\n`;
+const swiftParitySource = `// Generated from fixtures/rendering/equivalence.json by scripts/generate-adapters.mjs. Do not edit manually.
+struct SemanticPromptParityFixture {
+    let caseID: String
+    let packID: String
+    let operationID: String
+    let input: String
+    let parameters: [String: String]
+    let expectedUserMessage: String
+}
+
+let semanticPromptParityFixtures: [SemanticPromptParityFixture] = [
+${equivalence.map((fixture) => {
+  const rendered = render({
+    packId: fixture.pack_id,
+    operationId: fixture.operation_id,
+    input: fixture.input,
+    parameters: fixture.parameters,
+  });
+  const entries = Object.entries(fixture.parameters);
+  const parameters = entries.length === 0
+    ? ':'
+    : entries.map(([name, value]) => `${swift(name)}: ${swift(value)}`).join(', ');
+  return `    SemanticPromptParityFixture(caseID: ${swift(fixture.case_id)}, packID: ${swift(fixture.pack_id)}, operationID: ${swift(fixture.operation_id)}, input: ${swift(fixture.input)}, parameters: [${parameters}], expectedUserMessage: ${swift(rendered.messages.at(-1).content)})`;
+}).join(',\n')}
+]
+`;
 if (check) {
   const current = readFileSync(output, 'utf8');
   const currentBrowser = readFileSync(browserOutput, 'utf8');
-  if (current !== renderedSwiftSource || currentBrowser !== browserSource) {
+  const currentSwiftParity = readFileSync(swiftParityOutput, 'utf8');
+  if (current !== renderedSwiftSource || currentBrowser !== browserSource || currentSwiftParity !== swiftParitySource) {
     console.error('Generated adapters are out of sync. Run npm run generate.');
     process.exit(1);
   }
 } else {
   mkdirSync(dirname(output), { recursive: true });
   mkdirSync(dirname(browserOutput), { recursive: true });
+  mkdirSync(dirname(swiftParityOutput), { recursive: true });
   writeFileSync(output, renderedSwiftSource);
   writeFileSync(browserOutput, browserSource);
+  writeFileSync(swiftParityOutput, swiftParitySource);
 }

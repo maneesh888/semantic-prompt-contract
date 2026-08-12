@@ -24,6 +24,10 @@ function encodeInput(value, encoding) {
   return JSON.stringify(value);
 }
 
+function encodeParameters(values) {
+  return JSON.stringify(Object.fromEntries(Object.keys(values).sort().map((name) => [name, values[name]])));
+}
+
 function validatedParameters(operation, supplied) {
   if (supplied === null || typeof supplied !== 'object' || Array.isArray(supplied)) {
     throw new SemanticPromptContractError('parameters must be an object');
@@ -57,6 +61,7 @@ function validatedParameters(operation, supplied) {
 
 function renderUserMessage(pack, operation, input, parameters) {
   const values = validatedParameters(operation, parameters);
+  const parametersJson = encodeParameters(values);
   const wireOperation = operation.wire_operation_id;
   values.operation = wireOperation;
   values.response_example = substitute(pack.response.top_level_example, values);
@@ -69,6 +74,7 @@ function renderUserMessage(pack, operation, input, parameters) {
     ? input
     : [...input].slice(0, pack.input.max_characters).join('');
   values.input_json = encodeInput(boundedInput, pack.input.encoding);
+  values.parameters_json = parametersJson;
   return substitute(pack.user_message_template, values);
 }
 

@@ -23,7 +23,8 @@
         "required": {"type": "boolean"},
         "encoding": {"const": "json_string"},
         "trust": {"const": "untrusted_data"},
-        "max_characters": {"type": "integer", "minimum": 1}
+        "max_characters": {"type": "integer", "minimum": 1},
+        "max_characters_unit": {"const": "unicode_scalar"}
       }
     },
     "response": {
@@ -60,6 +61,7 @@
                 "trim": {"type": "boolean"},
                 "default": {"type": "string"},
                 "max_length": {"type": "integer", "minimum": 1},
+                "max_length_unit": {"const": "unicode_scalar"},
                 "pattern": {"type": "string", "minLength": 1}
               }
             }
