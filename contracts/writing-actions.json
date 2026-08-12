@@ -315,6 +315,7 @@
           "type": "string",
           "required": false,
           "trim": true,
+          "trim_characters": "ascii_whitespace",
           "default": "the requested target language",
           "max_length": 80,
           "max_length_unit": "unicode_scalar",

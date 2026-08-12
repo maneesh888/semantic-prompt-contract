@@ -59,6 +59,7 @@
                 "type": {"const": "string"},
                 "required": {"type": "boolean"},
                 "trim": {"type": "boolean"},
+                "trim_characters": {"const": "ascii_whitespace"},
                 "default": {"type": "string"},
                 "max_length": {"type": "integer", "minimum": 1},
                 "max_length_unit": {"const": "unicode_scalar"},

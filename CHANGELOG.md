@@ -7,6 +7,7 @@
 - Make system-role instructions platform-neutral and record the intentional compatibility break.
 - Expand golden equivalence coverage to every writing operation plus explicit/default/empty translation parameter cases, and add the discovered input regression matrix.
 - Encode dynamic operation parameters as JSON data, render placeholders in one pass, and define cross-runtime character limits in Unicode scalar values.
+- Define parameter trimming as ASCII whitespace and require exact operation identifiers so invalid-input behavior is identical across runtimes.
 
 This is a major release because system instructions and rendered user messages change. Consumers must advance their pinned gitlinks intentionally and repeat deterministic and live compatibility gates.
 

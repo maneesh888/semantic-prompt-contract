@@ -37,7 +37,7 @@ public enum SemanticPromptContract {
     private static let keyboardSuggestionsRuleLineTemplate = "{{rule}}"
 
     public static func renderWriting(operationID: String, input: String, parameters: [String: String] = [:]) throws -> SemanticPromptRendering {
-        switch operationID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        switch operationID {
     case "fix_grammar":
         try rejectUnknownParameters(parameters, allowed: [], operationID: "fix_grammar")
         let validatedParameters = compactParameters([:])
@@ -284,7 +284,7 @@ public enum SemanticPromptContract {
     }
 
     private static func validatedParameter(_ value: String?, defaultValue: String?, required: Bool, maxLength: Int?, pattern: String?, operationID: String, parameter: String) throws -> String? {
-        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let trimmed = value.map(trimASCIIWhitespace) ?? ""
         let selected = trimmed.isEmpty ? defaultValue : trimmed
         if required && selected == nil {
             throw SemanticPromptContractError.missingParameter(operation: operationID, parameter: parameter)
@@ -316,6 +316,10 @@ public enum SemanticPromptContract {
         }
         output.append(contentsOf: template[cursor...])
         return output
+    }
+
+    private static func trimASCIIWhitespace(_ value: String) -> String {
+        value.trimmingCharacters(in: CharacterSet(charactersIn: " \t\n\r\u{000B}\u{000C}"))
     }
 
     private static func compactParameters(_ values: [String: String?]) -> [String: String] {

@@ -27,7 +27,7 @@ LLM Gateway PR #10 removed five OpenKeyboard-specific tester presets from `publi
 
 ## Parameters and safety boundaries
 
-- `translate` encodes a trimmed target-language label in `operation_parameters` and retains the existing generic fallback when a diagnostic does not supply one. Version 2.0.0 rejects multiline, control-bearing, overlong, or non-language-label values; the value is never interpolated into operation rules.
+- `translate` encodes an ASCII-whitespace-trimmed target-language label in `operation_parameters` and retains the existing generic fallback when a diagnostic does not supply one. Version 2.0.0 rejects multiline, control-bearing, overlong, or non-language-label values; the value is never interpolated into operation rules.
 - Rewrite styles are stable semantic operation identifiers whose wire identifier remains `rewrite`.
 - Version 1.0.0 retained the original `<input_text>` delimiter rendering. Version 2.0.0 replaces it with a canonical JSON-string `source_text` value so delimiter-like, newline-bearing, or instruction-like content remains encoded data.
 - Bounded suggestion input retains the existing 500-character prefix behavior, with character limits explicitly defined as Unicode scalar values in both JavaScript and Swift.

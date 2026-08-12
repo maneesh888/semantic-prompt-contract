@@ -38,6 +38,7 @@ test('operation identifiers are unique and structured operations are complete', 
   }
   const translation = contract.operations.find((operation) => operation.id === 'translate');
   assert.equal(translation.parameters[0].max_length_unit, 'unicode_scalar');
+  assert.equal(translation.parameters[0].trim_characters, 'ascii_whitespace');
   assert.equal(readJSON('contracts/keyboard-suggestions.json').input.max_characters_unit, 'unicode_scalar');
 });
 

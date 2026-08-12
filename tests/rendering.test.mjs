@@ -57,10 +57,15 @@ test('parameters are validated and substituted safely', () => {
     SemanticPromptContractError,
   );
   assert.throws(
+    () => render({ operationId: 'translate', input: 'Hello', parameters: { target_language: '\ufeffDutch\ufeff' } }),
+    SemanticPromptContractError,
+  );
+  assert.throws(
     () => render({ operationId: 'summarize', input: 'Hello', parameters: { tone: 'formal' } }),
     SemanticPromptContractError,
   );
   assert.throws(() => render({ operationId: 'unknown', input: 'Hello' }), SemanticPromptContractError);
+  assert.throws(() => render({ operationId: ' FIX_GRAMMAR ', input: 'Hello' }), SemanticPromptContractError);
 });
 
 test('keyboard suggestions are bounded and do not request transport response_format', () => {
@@ -103,7 +108,7 @@ test('representative user messages retain the pre-migration golden renderings', 
   assert.deepEqual([...coveredWritingOperations].sort(), operationIds().sort());
   assert.deepEqual(
     fixtures.filter((fixture) => fixture.operation_id === 'translate').map((fixture) => fixture.case_id).sort(),
-    ['translate-default', 'translate-dutch', 'translate-empty'],
+    ['translate-ascii-trim', 'translate-default', 'translate-dutch', 'translate-empty'],
   );
   for (const fixture of fixtures) {
     const rendered = render({

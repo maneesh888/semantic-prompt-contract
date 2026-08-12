@@ -28,6 +28,10 @@ function encodeParameters(values) {
   return JSON.stringify(Object.fromEntries(Object.keys(values).sort().map((name) => [name, values[name]])));
 }
 
+function trimASCIIWhitespace(value) {
+  return value.replace(/^[\u0009-\u000d\u0020]+|[\u0009-\u000d\u0020]+$/g, '');
+}
+
 function validatedParameters(operation, supplied) {
   if (supplied === null || typeof supplied !== 'object' || Array.isArray(supplied)) {
     throw new SemanticPromptContractError('parameters must be an object');
@@ -39,14 +43,14 @@ function validatedParameters(operation, supplied) {
   const output = {};
   for (const definition of operation.parameters) {
     let value = supplied[definition.name];
-    if (value === undefined || (definition.trim && typeof value === 'string' && value.trim() === '')) value = definition.default;
+    if (value === undefined || (definition.trim && typeof value === 'string' && trimASCIIWhitespace(value) === '')) value = definition.default;
     if (value === undefined && definition.required) {
       throw new SemanticPromptContractError(`Missing required parameter for ${operation.id}: ${definition.name}`);
     }
     if (value !== undefined && typeof value !== definition.type) {
       throw new SemanticPromptContractError(`${definition.name} must be a ${definition.type}`);
     }
-    if (typeof value === 'string' && definition.trim) value = value.trim();
+    if (typeof value === 'string' && definition.trim) value = trimASCIIWhitespace(value);
     if (typeof value === 'string' && definition.max_length !== undefined && [...value].length > definition.max_length) {
       throw new SemanticPromptContractError(`${definition.name} exceeds maximum length ${definition.max_length}`);
     }

@@ -82,7 +82,7 @@ public enum SemanticPromptContract {
     private static let keyboardSuggestionsRuleLineTemplate = ${swift(suggestions.rule_line_template)}
 
     public static func renderWriting(operationID: String, input: String, parameters: [String: String] = [:]) throws -> SemanticPromptRendering {
-        switch operationID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        switch operationID {
 ${cases}
         default:
             throw SemanticPromptContractError.unknownOperation(operationID)
@@ -145,7 +145,7 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
     }
 
     private static func validatedParameter(_ value: String?, defaultValue: String?, required: Bool, maxLength: Int?, pattern: String?, operationID: String, parameter: String) throws -> String? {
-        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let trimmed = value.map(trimASCIIWhitespace) ?? ""
         let selected = trimmed.isEmpty ? defaultValue : trimmed
         if required && selected == nil {
             throw SemanticPromptContractError.missingParameter(operation: operationID, parameter: parameter)
@@ -177,6 +177,10 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
         }
         output.append(contentsOf: template[cursor...])
         return output
+    }
+
+    private static func trimASCIIWhitespace(_ value: String) -> String {
+        value.trimmingCharacters(in: CharacterSet(charactersIn: " \\t\\n\\r\\u{000B}\\u{000C}"))
     }
 
     private static func compactParameters(_ values: [String: String?]) -> [String: String] {
