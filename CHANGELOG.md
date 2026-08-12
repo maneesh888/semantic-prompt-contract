@@ -2,7 +2,7 @@
 
 ## 2.0.1
 
-- Tell the summarize operation to omit directive-like source text when factual content remains, preventing instruction-like payloads from being repeated into otherwise useful summaries.
+- Tell the summarize operation to omit source text that tries to control the model, selected operation, or response contract when factual content remains, while preserving ordinary instructional documents.
 - Add deterministic JavaScript and Swift regression coverage for that live Gemma safety case.
 
 ## 2.0.0
