@@ -8,6 +8,7 @@ function readJSON(path) {
 
 export const manifest = Object.freeze(readJSON('contracts/manifest.json'));
 const packs = new Map(manifest.packs.map((entry) => [entry.id, Object.freeze(readJSON(`contracts/${entry.path}`))]));
+export const unstructuredWritingSystemInstruction = packs.get('writing-actions').unstructured_system_instruction;
 
 export class SemanticPromptContractError extends Error {}
 

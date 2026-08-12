@@ -11,6 +11,7 @@
     "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
     "description": {"type": "string", "minLength": 1},
     "system_instruction": {"type": "string", "minLength": 1},
+    "unstructured_system_instruction": {"type": "string", "minLength": 1},
     "input": {
       "type": "object",
       "additionalProperties": false,

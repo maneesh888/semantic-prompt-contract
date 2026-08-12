@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
-import { manifest, operationIds } from '../src/index.js';
+import { manifest, operationIds, unstructuredWritingSystemInstruction } from '../src/index.js';
 
 const readJSON = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
 
@@ -32,6 +32,11 @@ test('operation identifiers are unique and structured operations are complete', 
     assert.ok(operation.result_types.length > 0);
     assert.ok(operation.no_change_behavior.length > 0);
   }
+});
+
+test('unstructured custom actions retain one package-owned system instruction', () => {
+  assert.equal(typeof unstructuredWritingSystemInstruction, 'string');
+  assert.ok(unstructuredWritingSystemInstruction.includes('return only the requested text'));
 });
 
 test('valid response fixtures pass and invalid fixtures fail', () => {
