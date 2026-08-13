@@ -14,7 +14,7 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '2.0.2');
+    assert.equal(first.contractVersion, '2.0.3');
     assert.deepEqual(first.responseFormat, { type: 'json_object' });
   }
 });
@@ -97,7 +97,7 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Structured operation · Summarize',
     'Structured operation · Rewrite',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '2.0.2'));
+  assert.ok(presets.every((preset) => preset.contractVersion === '2.0.3'));
 });
 
 test('correction prompts forbid stylistic rewrites and require atomic source spans', () => {
@@ -105,10 +105,10 @@ test('correction prompts forbid stylistic rewrites and require atomic source spa
     operationId: 'fix_grammar',
     input: 'Our support team definitely needs clearer notes before they reply to the customer.',
   }).messages.at(-1).content;
-  assert.ok(writing.includes('This is an edit-card task, not a rewrite task.'));
+  assert.ok(writing.includes('This is a patch list, not a rewrite.'));
   assert.ok(writing.includes('changing "reply" to "respond" is forbidden'));
-  assert.ok(writing.includes('Prefer one word'));
-  assert.ok(writing.includes('If uncertain, omit the item.'));
+  assert.ok(writing.includes('text must be a short explanation of that patch'));
+  assert.ok(writing.includes('Build corrected_text by applying only the returned patches'));
 
   const suggestions = render({
     packId: 'keyboard-suggestions',
@@ -118,6 +118,32 @@ test('correction prompts forbid stylistic rewrites and require atomic source spa
   assert.ok(suggestions.includes('never more than three words'));
   assert.ok(suggestions.includes('replace valid wording with a synonym'));
   assert.ok(suggestions.includes('Put optional next-word, phrase, or synonym ideas in predictions instead.'));
+});
+
+test('correction evaluation fixtures define independent allowed and forbidden patches', () => {
+  const fixtures = readJSON('fixtures/evaluations/correction-patches.json');
+
+  for (const fixture of fixtures) {
+    const rendered = render({ operationId: 'fix_grammar', input: fixture.input });
+    const payload = JSON.parse(rendered.messages.at(-1).content.split('\n').at(-1));
+    assert.equal(payload.source_text, fixture.input, fixture.id);
+
+    let correctedText = fixture.input;
+    for (const patch of fixture.expected_patches) {
+      assert.notEqual(patch.original, fixture.input, `${fixture.id}: patches must not replace the full input`);
+      assert.ok(fixture.input.includes(patch.original), `${fixture.id}: expected patch source must occur in input`);
+      correctedText = correctedText.replace(patch.original, patch.replacement);
+    }
+    assert.equal(correctedText, fixture.expected_corrected_text, fixture.id);
+
+    for (const patch of fixture.forbidden_patches) {
+      assert.ok(fixture.input.includes(patch.original), `${fixture.id}: forbidden patch source must occur in input`);
+      assert.ok(
+        rendered.messages.at(-1).content.includes(`changing "${patch.original}" to "${patch.replacement}" is forbidden`),
+        `${fixture.id}: prompt must explicitly reject the known style rewrite`,
+      );
+    }
+  }
 });
 
 test('summarize excludes model-control attempts while preserving ordinary instructions', () => {

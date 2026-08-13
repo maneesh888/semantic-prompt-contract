@@ -1,0 +1,15 @@
+[
+  {
+    "id": "support-team-word-level-patches",
+    "input": "Our support team definately need clearer notes before they reply to the customer about the delayed refnd.",
+    "expected_patches": [
+      {"original": "definately", "replacement": "definitely"},
+      {"original": "need", "replacement": "needs"},
+      {"original": "refnd", "replacement": "refund"}
+    ],
+    "forbidden_patches": [
+      {"original": "reply", "replacement": "respond"}
+    ],
+    "expected_corrected_text": "Our support team definitely needs clearer notes before they reply to the customer about the delayed refund."
+  }
+]
