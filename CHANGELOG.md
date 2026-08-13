@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.3
+
+- Reword correction instructions as explicit independent patches with clear meanings for `original`, `replacement`, `text`, and `corrected_text`.
+- Add a compact word-level example and remove ambiguous shorthand that can lead smaller models toward sentence rewrites.
+
+This is a patch release because the operation identifier, parameters, schema, and response fields are unchanged.
+
 ## 2.0.2
 
 - Restrict correction operations to definite, local mechanical errors and explicitly forbid stylistic synonym rewrites such as `reply` to `respond`.

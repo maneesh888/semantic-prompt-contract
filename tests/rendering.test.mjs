@@ -14,7 +14,7 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '2.0.2');
+    assert.equal(first.contractVersion, '2.0.3');
     assert.deepEqual(first.responseFormat, { type: 'json_object' });
   }
 });
@@ -97,7 +97,7 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Structured operation · Summarize',
     'Structured operation · Rewrite',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '2.0.2'));
+  assert.ok(presets.every((preset) => preset.contractVersion === '2.0.3'));
 });
 
 test('correction prompts forbid stylistic rewrites and require atomic source spans', () => {
@@ -105,10 +105,10 @@ test('correction prompts forbid stylistic rewrites and require atomic source spa
     operationId: 'fix_grammar',
     input: 'Our support team definitely needs clearer notes before they reply to the customer.',
   }).messages.at(-1).content;
-  assert.ok(writing.includes('This is an edit-card task, not a rewrite task.'));
+  assert.ok(writing.includes('This is a patch list, not a rewrite.'));
   assert.ok(writing.includes('changing "reply" to "respond" is forbidden'));
-  assert.ok(writing.includes('Prefer one word'));
-  assert.ok(writing.includes('If uncertain, omit the item.'));
+  assert.ok(writing.includes('text must be a short explanation of that patch'));
+  assert.ok(writing.includes('Build corrected_text by applying only the returned patches'));
 
   const suggestions = render({
     packId: 'keyboard-suggestions',

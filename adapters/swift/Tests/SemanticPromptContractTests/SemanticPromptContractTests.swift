@@ -26,7 +26,7 @@ final class SemanticPromptContractTests: XCTestCase {
             let first = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             let second = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             XCTAssertEqual(first, second)
-            XCTAssertEqual(first.contractVersion, "2.0.2")
+            XCTAssertEqual(first.contractVersion, "2.0.3")
             XCTAssertEqual(first.messages.map(\.role), ["system", "user"])
             XCTAssertEqual(first.responseFormatType, "json_object")
         }
@@ -79,10 +79,10 @@ final class SemanticPromptContractTests: XCTestCase {
                 input: "Our support team definitely needs clearer notes before they reply to the customer."
             ).messages.last?.content
         )
-        XCTAssertTrue(writing.contains("This is an edit-card task, not a rewrite task."))
+        XCTAssertTrue(writing.contains("This is a patch list, not a rewrite."))
         XCTAssertTrue(writing.contains("changing \"reply\" to \"respond\" is forbidden"))
-        XCTAssertTrue(writing.contains("Prefer one word"))
-        XCTAssertTrue(writing.contains("If uncertain, omit the item."))
+        XCTAssertTrue(writing.contains("text must be a short explanation of that patch"))
+        XCTAssertTrue(writing.contains("Build corrected_text by applying only the returned patches"))
 
         let suggestions = try XCTUnwrap(
             SemanticPromptContract.renderKeyboardSuggestions(input: "reply to the customer").messages.last?.content
