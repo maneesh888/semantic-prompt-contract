@@ -120,6 +120,32 @@ test('correction prompts forbid stylistic rewrites and require atomic source spa
   assert.ok(suggestions.includes('Put optional next-word, phrase, or synonym ideas in predictions instead.'));
 });
 
+test('correction evaluation fixtures define independent allowed and forbidden patches', () => {
+  const fixtures = readJSON('fixtures/evaluations/correction-patches.json');
+
+  for (const fixture of fixtures) {
+    const rendered = render({ operationId: 'fix_grammar', input: fixture.input });
+    const payload = JSON.parse(rendered.messages.at(-1).content.split('\n').at(-1));
+    assert.equal(payload.source_text, fixture.input, fixture.id);
+
+    let correctedText = fixture.input;
+    for (const patch of fixture.expected_patches) {
+      assert.notEqual(patch.original, fixture.input, `${fixture.id}: patches must not replace the full input`);
+      assert.ok(fixture.input.includes(patch.original), `${fixture.id}: expected patch source must occur in input`);
+      correctedText = correctedText.replace(patch.original, patch.replacement);
+    }
+    assert.equal(correctedText, fixture.expected_corrected_text, fixture.id);
+
+    for (const patch of fixture.forbidden_patches) {
+      assert.ok(fixture.input.includes(patch.original), `${fixture.id}: forbidden patch source must occur in input`);
+      assert.ok(
+        rendered.messages.at(-1).content.includes(`changing "${patch.original}" to "${patch.replacement}" is forbidden`),
+        `${fixture.id}: prompt must explicitly reject the known style rewrite`,
+      );
+    }
+  }
+});
+
 test('summarize excludes model-control attempts while preserving ordinary instructions', () => {
   const rendered = render({
     operationId: 'summarize',

@@ -4,6 +4,7 @@
 
 - Reword correction instructions as explicit independent patches with clear meanings for `original`, `replacement`, `text`, and `corrected_text`.
 - Add a compact word-level example and remove ambiguous shorthand that can lead smaller models toward sentence rewrites.
+- Add a deterministic correction-evaluation fixture for exact allowed word-level patches and a forbidden stylistic synonym change.
 
 This is a patch release because the operation identifier, parameters, schema, and response fields are unchanged.
 
