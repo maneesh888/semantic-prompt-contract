@@ -1,6 +1,6 @@
 # semantic-prompt-contract
 
-`semantic-prompt-contract` is the canonical, versioned source for reusable semantic instructions used by OpenKeyboard and its gateway diagnostics. Version `2.0.3` contains the structured writing-action pack and bounded keyboard-suggestion pack with platform-neutral instructions, safe JSON-string input encoding, and explicit patch-oriented correction rules for lightweight models.
+`semantic-prompt-contract` is the canonical, versioned source for reusable semantic instructions used by OpenKeyboard and its gateway diagnostics. Version `3.0.0` makes `fix_grammar` a complete plain-text correction while retaining structured JSON behavior for every other writing action and the bounded keyboard-suggestion pack.
 
 The package owns operation identifiers, descriptions, parameters, semantic instructions, deterministic rendering, response-format metadata, response schemas, examples, and fixtures. It deliberately does not own UI, networking, authentication, API keys, model selection, provider routing, persistence, application state, or deployment configuration.
 

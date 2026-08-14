@@ -1,5 +1,5 @@
 [
-  {"case_id":"fix_grammar","pack_id":"writing-actions","operation_id":"fix_grammar","input":"i has a apple","parameters":{},"user_sha256":"6385b62be7ce8717aac54a733b590a650b9ca64479d24c853e08eff65d8de963"},
+  {"case_id":"fix_grammar","pack_id":"writing-actions","operation_id":"fix_grammar","input":"i has a apple","parameters":{},"user_sha256":"f714ccd31b451bbd8ef1bad444f2f7b96fb469f636b397d12540ec5eba24c438"},
   {"case_id":"rewrite","pack_id":"writing-actions","operation_id":"rewrite","input":"unclear text ✨","parameters":{},"user_sha256":"aaa54f469da103ae5953c23e880378bb60d39172097173e7f5726031d7a8cd96"},
   {"case_id":"rewrite_core","pack_id":"writing-actions","operation_id":"rewrite_core","input":"unclear text ✨","parameters":{},"user_sha256":"2106b2876e3add7446366f5a836028716b7902a46c6c660e00567c1b381bf2a2"},
   {"case_id":"rewrite_shorten","pack_id":"writing-actions","operation_id":"rewrite_shorten","input":"unclear text ✨","parameters":{},"user_sha256":"6fc26e0493e2e590e33aaab3e632671835d515b153578dc6b056f91e727d8c3c"},

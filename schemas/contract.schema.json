@@ -67,9 +67,13 @@
               }
             }
           },
+          "system_instruction": {"type": "string", "minLength": 1},
+          "user_message_mode": {"enum": ["template", "raw_input"]},
+          "response_format": {"enum": ["json_object", "plain_text"]},
+          "temperature": {"type": ["number", "null"], "minimum": 0},
           "max_tokens": {"type": "integer", "minimum": 1},
           "result_types": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-          "rules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "rules": {"type": "array", "items": {"type": "string", "minLength": 1}},
           "no_change_behavior": {"type": "string", "minLength": 1}
         }
       }

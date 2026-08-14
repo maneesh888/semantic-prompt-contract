@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.0.0
+
+- Change only `fix_grammar` to send the source unchanged as the user message and return one complete corrected plain-text response.
+- Add operation-level system-instruction, user-message, response-format, and temperature overrides while retaining existing structured JSON renderings for all other writing actions.
+- Omit temperature for grammar correction and increase its output-token allowance so the complete source can be reproduced.
+- Advance the contract schema to `2.1.0` and regenerate the Swift/browser adapters and rendering fixtures.
+
+This is a major release because `fix_grammar` changes from structured correction patches to a complete plain-text response.
+
 ## 2.0.3
 
 - Reword correction instructions as explicit independent patches with clear meanings for `original`, `replacement`, `text`, and `corrected_text`.
