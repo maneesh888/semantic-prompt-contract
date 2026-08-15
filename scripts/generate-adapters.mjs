@@ -41,7 +41,13 @@ function ruleExpression(rule) {
 const cases = writing.operations.map((operation) => {
   const params = parameterCode(operation);
   const rules = operation.rules.map((rule) => `            ${ruleExpression(rule, operation)}`).join(',\n');
-  return `    case ${swift(operation.id)}:\n${params.join('\n')}\n        return renderWriting(operationID: ${swift(operation.id)}, wireOperationID: ${swift(operation.wire_operation_id)}, input: input, parameters: validatedParameters, rules: [\n${rules}\n        ], maxTokens: ${operation.max_tokens})`;
+  const systemInstruction = swift(operation.system_instruction ?? writing.system_instruction);
+  const userMessageMode = swift(operation.user_message_mode ?? 'template');
+  const responseFormat = (operation.response_format ?? writing.response.format) === 'json_object' ? swift('json_object') : 'nil';
+  const temperature = Object.hasOwn(operation, 'temperature')
+    ? (operation.temperature === null ? 'nil' : String(operation.temperature))
+    : '0.1';
+  return `    case ${swift(operation.id)}:\n${params.join('\n')}\n        return renderWriting(operationID: ${swift(operation.id)}, wireOperationID: ${swift(operation.wire_operation_id)}, input: input, parameters: validatedParameters, systemInstruction: ${systemInstruction}, userMessageMode: ${userMessageMode}, responseFormatType: ${responseFormat}, temperature: ${temperature}, rules: [\n${rules}\n        ], maxTokens: ${operation.max_tokens})`;
 }).join('\n');
 
 const swiftSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.
@@ -68,6 +74,7 @@ public struct SemanticPromptRendering: Equatable, Sendable {
     public let messages: [SemanticPromptMessage]
     public let responseFormatType: String?
     public let maxTokens: Int
+    public let temperature: Double?
 }
 
 public enum SemanticPromptContract {
@@ -113,22 +120,23 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
                 SemanticPromptMessage(role: "user", content: user)
             ],
             responseFormatType: nil,
-            maxTokens: ${suggestions.operations[0].max_tokens}
+            maxTokens: ${suggestions.operations[0].max_tokens},
+            temperature: nil
         )
     }
 
-    private static func renderWriting(operationID: String, wireOperationID: String, input: String, parameters: [String: String], rules: [String], maxTokens: Int) -> SemanticPromptRendering {
+    private static func renderWriting(operationID: String, wireOperationID: String, input: String, parameters: [String: String], systemInstruction: String, userMessageMode: String, responseFormatType: String?, temperature: Double?, rules: [String], maxTokens: Int) -> SemanticPromptRendering {
         let numberedRules = rules.enumerated().map {
             substitute(writingRuleLineTemplate, values: ["index": String($0.offset + 1), "rule": $0.element])
         }.joined(separator: "\\n")
         let responseExample = ${swift(writing.response.top_level_example)}.replacingOccurrences(of: "{{operation}}", with: wireOperationID)
-        let user = substitute(writingUserMessageTemplate, values: [
-            "operation": wireOperationID,
-            "response_example": responseExample,
-            "numbered_rules": numberedRules,
-            "input_json": jsonStringLiteral(input),
-            "parameters_json": jsonStringDictionaryLiteral(parameters)
-        ])
+        let user = userMessageMode == "raw_input" ? input : substitute(writingUserMessageTemplate, values: [
+                "operation": wireOperationID,
+                "response_example": responseExample,
+                "numbered_rules": numberedRules,
+                "input_json": jsonStringLiteral(input),
+                "parameters_json": jsonStringDictionaryLiteral(parameters)
+            ])
         return SemanticPromptRendering(
             contractVersion: version,
             schemaVersion: schemaVersion,
@@ -136,11 +144,12 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
             operationID: operationID,
             wireOperationID: wireOperationID,
             messages: [
-                SemanticPromptMessage(role: "system", content: writingSystemInstruction),
+                SemanticPromptMessage(role: "system", content: systemInstruction),
                 SemanticPromptMessage(role: "user", content: user)
             ],
-            responseFormatType: "json_object",
-            maxTokens: maxTokens
+            responseFormatType: responseFormatType,
+            maxTokens: maxTokens,
+            temperature: temperature
         )
     }
 

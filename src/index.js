@@ -65,6 +65,7 @@ function validatedParameters(operation, supplied) {
 
 function renderUserMessage(pack, operation, input, parameters) {
   const values = validatedParameters(operation, parameters);
+  if (operation.user_message_mode === 'raw_input') return input;
   const parametersJson = encodeParameters(values);
   const wireOperation = operation.wire_operation_id;
   values.operation = wireOperation;
@@ -89,6 +90,7 @@ export function render({ packId = 'writing-actions', operationId, input, paramet
   const operation = pack.operations.find((candidate) => candidate.id === operationId);
   if (!operation) throw new SemanticPromptContractError(`Unknown operation for ${packId}: ${operationId}`);
   const user = renderUserMessage(pack, operation, input, parameters);
+  const responseFormat = operation.response_format ?? pack.response.format;
   return Object.freeze({
     contractVersion: pack.contract_version,
     schemaVersion: pack.schema_version,
@@ -96,12 +98,13 @@ export function render({ packId = 'writing-actions', operationId, input, paramet
     operationId: operation.id,
     wireOperationId: operation.wire_operation_id,
     messages: Object.freeze([
-      Object.freeze({ role: 'system', content: pack.system_instruction }),
+      Object.freeze({ role: 'system', content: operation.system_instruction ?? pack.system_instruction }),
       Object.freeze({ role: 'user', content: user }),
     ]),
-    responseFormat: pack.response.format === 'json_object' ? Object.freeze({ type: 'json_object' }) : null,
-    responseSchema: pack.response.schema,
+    responseFormat: responseFormat === 'json_object' ? Object.freeze({ type: 'json_object' }) : null,
+    responseSchema: responseFormat === 'json_object' ? pack.response.schema : null,
     maxTokens: operation.max_tokens,
+    temperature: Object.hasOwn(operation, 'temperature') ? operation.temperature : 0.1,
   });
 }
 
@@ -129,7 +132,7 @@ export function gatewayPromptPresets() {
         input_text: fixture.input,
         response_format: rendered.responseFormat,
         max_tokens: rendered.maxTokens,
-        temperature: 0.1,
+        ...(rendered.temperature === null ? {} : { temperature: rendered.temperature }),
       }),
       contractVersion: rendered.contractVersion,
     });

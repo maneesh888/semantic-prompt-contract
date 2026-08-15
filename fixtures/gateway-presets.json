@@ -1,7 +1,7 @@
 [
   {
     "id": "structured-grammar-multi-error",
-    "label": "Structured grammar · Multi-error",
+    "label": "Plain-text grammar · Multi-error",
     "pack_id": "writing-actions",
     "operation_id": "fix_grammar",
     "input": "i has a apple,ths is nt sound god",
@@ -9,7 +9,7 @@
   },
   {
     "id": "structured-grammar-complex-spell-fix",
-    "label": "Structured grammar · Complex spell-fix",
+    "label": "Plain-text grammar · Complex spell-fix",
     "pack_id": "writing-actions",
     "operation_id": "fix_grammar",
     "input": "i definately recieve teh adress tomorow, and seperate files wont upload because its recieve limit is to low.",
@@ -17,7 +17,7 @@
   },
   {
     "id": "structured-grammar-clean",
-    "label": "Structured grammar · Clean/no issue",
+    "label": "Plain-text grammar · Clean/no issue",
     "pack_id": "writing-actions",
     "operation_id": "fix_grammar",
     "input": "The gateway connection is working correctly.",

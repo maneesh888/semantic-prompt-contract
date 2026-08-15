@@ -1,5 +1,5 @@
 {
-  "operation": "fix_grammar",
+  "operation": "rewrite",
   "results": [
     {
       "id": "correction-1",
