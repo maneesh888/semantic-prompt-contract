@@ -38,5 +38,15 @@
     "operation_id": "rewrite",
     "input": "hey team the app has issues and we need fix soon please check it",
     "parameters": {}
+  },
+  {
+    "id": "structured-operation-translate-dutch",
+    "label": "Structured operation · Translate to Dutch",
+    "pack_id": "writing-actions",
+    "operation_id": "translate",
+    "input": "The gateway connection is ready for writing actions.",
+    "parameters": {
+      "target_language": "Dutch"
+    }
   }
 ]

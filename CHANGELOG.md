@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.1.0
+
+- Add a contract-owned gateway diagnostic preset for translation to Dutch.
+- Generate gateway preset metadata and response validation for Swift consumers so diagnostics use the canonical operation, fixture, rendering, response schema, and result types.
+
+This is a minor release because it adds diagnostic fixtures and adapter API without changing production operation renderings.
+
 ## 3.0.0
 
 - Change only `fix_grammar` to send the source unchanged as the user message and return one complete corrected plain-text response.

@@ -14,7 +14,7 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '3.0.0');
+    assert.equal(first.contractVersion, '3.1.0');
     if (operationId === 'fix_grammar') {
       assert.equal(first.responseFormat, null);
       assert.equal(first.temperature, null);
@@ -103,11 +103,22 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Plain-text grammar · Clean/no issue',
     'Structured operation · Summarize',
     'Structured operation · Rewrite',
+    'Structured operation · Translate to Dutch',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '3.0.0'));
+  assert.ok(presets.every((preset) => preset.contractVersion === '3.1.0'));
   assert.equal(presets[0].request.response_format, null);
   assert.equal(Object.hasOwn(presets[0].request, 'temperature'), false);
   assert.equal(presets[3].request.temperature, 0.1);
+  const translation = presets.at(-1);
+  assert.equal(translation.operationId, 'translate');
+  assert.deepEqual(translation.parameters, { target_language: 'Dutch' });
+  assert.equal(translation.request.operation, 'translate');
+  assert.deepEqual(translation.request.response_format, { type: 'json_object' });
+  assert.equal(translation.responseSchema, '../schemas/writing-action-response.schema.json');
+  assert.deepEqual(translation.resultTypes, ['translation']);
+  const payload = JSON.parse(translation.user.split('\n').at(-1));
+  assert.equal(payload.source_text, translation.input);
+  assert.deepEqual(payload.operation_parameters, { target_language: 'Dutch' });
 });
 
 test('grammar rendering requests one complete conservative plain-text correction', () => {
