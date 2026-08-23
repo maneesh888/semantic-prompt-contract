@@ -10,6 +10,7 @@ const manifest = readJSON('contracts/manifest.json');
 const writing = readJSON('contracts/writing-actions.json');
 const suggestions = readJSON('contracts/keyboard-suggestions.json');
 const equivalence = readJSON('fixtures/rendering/equivalence.json');
+const gatewayPresets = gatewayPromptPresets();
 
 function swift(value) {
   return JSON.stringify(value).replaceAll('\\(', '\\\\(');
@@ -77,6 +78,22 @@ public struct SemanticPromptRendering: Equatable, Sendable {
     public let temperature: Double?
 }
 
+public struct SemanticGatewayPromptPreset: Equatable, Sendable {
+    public let id: String
+    public let label: String
+    public let input: String
+    public let parameters: [String: String]
+    public let rendering: SemanticPromptRendering
+    public let responseSchema: String?
+    public let resultTypes: [String]
+}
+
+public enum SemanticGatewayPromptValidationError: Error, Equatable {
+    case unknownPreset(String)
+    case invalidResponse
+    case unexpectedOperation(expected: String, actual: String)
+}
+
 public enum SemanticPromptContract {
     public static let version = ${swift(manifest.contract_version)}
     public static let schemaVersion = ${swift(manifest.schema_version)}
@@ -87,6 +104,16 @@ public enum SemanticPromptContract {
     public static let keyboardSuggestionsSystemInstruction = ${swift(suggestions.system_instruction)}
     private static let keyboardSuggestionsUserMessageTemplate = ${swift(suggestions.user_message_template)}
     private static let keyboardSuggestionsRuleLineTemplate = ${swift(suggestions.rule_line_template)}
+    public static let gatewayPromptPresets: [SemanticGatewayPromptPreset] = [
+${gatewayPresets.map((preset) => {
+  const entries = Object.entries(preset.parameters);
+  const parameters = entries.length === 0
+    ? ':'
+    : entries.map(([name, value]) => `${swift(name)}: ${swift(value)}`).join(', ');
+  const responseSchema = preset.responseSchema === null ? 'nil' : swift(preset.responseSchema);
+  return `        SemanticGatewayPromptPreset(id: ${swift(preset.id)}, label: ${swift(preset.label)}, input: ${swift(preset.input)}, parameters: [${parameters}], rendering: try! renderWriting(operationID: ${swift(preset.operationId)}, input: ${swift(preset.input)}, parameters: [${parameters}]), responseSchema: ${responseSchema}, resultTypes: [${preset.resultTypes.map(swift).join(', ')}])`;
+}).join(',\n')}
+    ]
 
     public static func renderWriting(operationID: String, input: String, parameters: [String: String] = [:]) throws -> SemanticPromptRendering {
         switch operationID {
@@ -123,6 +150,72 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
             maxTokens: ${suggestions.operations[0].max_tokens},
             temperature: nil
         )
+    }
+
+    public static func gatewayPromptPreset(id: String) -> SemanticGatewayPromptPreset? {
+        gatewayPromptPresets.first { $0.id == id }
+    }
+
+    public static func validateGatewayPromptResponse(_ content: String, presetID: String) throws -> String {
+        guard let preset = gatewayPromptPreset(id: presetID) else {
+            throw SemanticGatewayPromptValidationError.unknownPreset(presetID)
+        }
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw SemanticGatewayPromptValidationError.invalidResponse }
+        guard preset.rendering.responseFormatType != nil else { return content }
+        guard let data = trimmed.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let response = object as? [String: Any],
+              let operation = nonEmptyString(response["operation"]),
+              let expectedOperation = preset.rendering.wireOperationID,
+              let rawResults = response["results"] as? [Any] else {
+            throw SemanticGatewayPromptValidationError.invalidResponse
+        }
+        guard operation == expectedOperation else {
+            throw SemanticGatewayPromptValidationError.unexpectedOperation(expected: expectedOperation, actual: operation)
+        }
+        if response.keys.contains("summary"), response["summary"] as? String == nil {
+            throw SemanticGatewayPromptValidationError.invalidResponse
+        }
+        if response.keys.contains("corrected_text"), response["corrected_text"] as? String == nil {
+            throw SemanticGatewayPromptValidationError.invalidResponse
+        }
+
+        var matchingOutput: String?
+        for rawResult in rawResults {
+            guard let result = rawResult as? [String: Any],
+                  nonEmptyString(result["id"]) != nil,
+                  let type = nonEmptyString(result["type"]),
+                  Self.writingResultTypes.contains(type),
+                  nonEmptyString(result["title"]) != nil,
+                  result["text"] is String else {
+                throw SemanticGatewayPromptValidationError.invalidResponse
+            }
+            if let range = result["range"] {
+                guard let offsets = range as? [String: Any],
+                      let start = offsets["start"] as? Int, start >= 0,
+                      let end = offsets["end"] as? Int, end >= 0,
+                      offsets.keys.allSatisfy({ $0 == "start" || $0 == "end" }) else {
+                    throw SemanticGatewayPromptValidationError.invalidResponse
+                }
+            }
+            if let confidence = result["confidence"] as? Double, !(0...1).contains(confidence) {
+                throw SemanticGatewayPromptValidationError.invalidResponse
+            }
+            if preset.resultTypes.contains(type), matchingOutput == nil {
+                matchingOutput = nonEmptyString(result["replacement"]) ?? nonEmptyString(result["text"])
+            }
+        }
+
+        guard let matchingOutput else {
+            throw SemanticGatewayPromptValidationError.invalidResponse
+        }
+        let output = nonEmptyString(response["corrected_text"]) ?? matchingOutput
+        guard
+              output.trimmingCharacters(in: .whitespacesAndNewlines) != preset.input.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            throw SemanticGatewayPromptValidationError.invalidResponse
+        }
+        return output
     }
 
     private static func renderWriting(operationID: String, wireOperationID: String, input: String, parameters: [String: String], systemInstruction: String, userMessageMode: String, responseFormatType: String?, temperature: Double?, rules: [String], maxTokens: Int) -> SemanticPromptRendering {
@@ -227,6 +320,13 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
             throw SemanticPromptContractError.unsupportedParameter(operation: operationID, parameter: parameter)
         }
     }
+
+    private static let writingResultTypes: Set<String> = ["correction", "suggestion", "summary", "translation", "warning", "explanation"]
+
+    private static func nonEmptyString(_ value: Any?) -> String? {
+        let trimmed = (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }
 `;
 
@@ -241,7 +341,7 @@ const swiftParityOutput = join(root, 'adapters/swift/Tests/SemanticPromptContrac
 const browserSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.\n` +
   `globalThis.SemanticPromptContractBrowser=Object.freeze(${JSON.stringify({
     contractVersion: manifest.contract_version,
-    gatewayPromptPresets: gatewayPromptPresets(),
+    gatewayPromptPresets,
   })});\n`;
 const swiftParitySource = `// Generated from fixtures/rendering/equivalence.json by scripts/generate-adapters.mjs. Do not edit manually.
 struct SemanticPromptParityFixture {

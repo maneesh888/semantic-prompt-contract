@@ -26,7 +26,7 @@ final class SemanticPromptContractTests: XCTestCase {
             let first = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             let second = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             XCTAssertEqual(first, second)
-            XCTAssertEqual(first.contractVersion, "3.0.0")
+            XCTAssertEqual(first.contractVersion, "3.1.0")
             XCTAssertEqual(first.messages.map(\.role), ["system", "user"])
             if operation == "fix_grammar" {
                 XCTAssertNil(first.responseFormatType)
@@ -67,6 +67,38 @@ final class SemanticPromptContractTests: XCTestCase {
         let payloadData = try XCTUnwrap(String(try XCTUnwrap(lines.last)).data(using: .utf8))
         let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: payloadData) as? [String: Any])
         XCTAssertEqual((payload["operation_parameters"] as? [String: String])?["target_language"], value)
+    }
+
+    func testGatewayTranslationPresetOwnsDutchRenderingAndValidation() throws {
+        let preset = try XCTUnwrap(SemanticPromptContract.gatewayPromptPreset(id: "structured-operation-translate-dutch"))
+        XCTAssertEqual(preset.rendering.operationID, "translate")
+        XCTAssertEqual(preset.rendering.wireOperationID, "translate")
+        XCTAssertEqual(preset.parameters, ["target_language": "Dutch"])
+        XCTAssertEqual(preset.responseSchema, "../schemas/writing-action-response.schema.json")
+        XCTAssertEqual(preset.resultTypes, ["translation"])
+
+        let payloadLine = try XCTUnwrap(preset.rendering.messages.last?.content.split(separator: "\n", omittingEmptySubsequences: false).last)
+        let payloadData = try XCTUnwrap(String(payloadLine).data(using: .utf8))
+        let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: payloadData) as? [String: Any])
+        XCTAssertEqual(payload["source_text"] as? String, preset.input)
+        XCTAssertEqual((payload["operation_parameters"] as? [String: String])?["target_language"], "Dutch")
+
+        let response = #"{"operation":"translate","results":[{"id":"translation-1","type":"translation","title":"Dutch","text":"De gatewayverbinding is klaar voor schrijfacties.","replacement":"De gatewayverbinding is klaar voor schrijfacties."}],"corrected_text":"De gatewayverbinding is klaar voor schrijfacties."}"#
+        XCTAssertEqual(
+            try SemanticPromptContract.validateGatewayPromptResponse(response, presetID: preset.id),
+            "De gatewayverbinding is klaar voor schrijfacties."
+        )
+    }
+
+    func testGatewayStructuredValidationRejectsWrongOperationAndResultType() throws {
+        let wrongOperation = #"{"operation":"rewrite","results":[{"id":"translation-1","type":"translation","title":"Dutch","text":"Hallo"}],"corrected_text":"Hallo"}"#
+        XCTAssertThrowsError(
+            try SemanticPromptContract.validateGatewayPromptResponse(wrongOperation, presetID: "structured-operation-translate-dutch")
+        )
+        let wrongType = #"{"operation":"translate","results":[{"id":"suggestion-1","type":"suggestion","title":"Suggestion","text":"Hallo"}],"corrected_text":"Hallo"}"#
+        XCTAssertThrowsError(
+            try SemanticPromptContract.validateGatewayPromptResponse(wrongType, presetID: "structured-operation-translate-dutch")
+        )
     }
 
     func testKeyboardSuggestionsRemainBounded() {

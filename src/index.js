@@ -116,6 +116,8 @@ export function operationIds(packId = 'writing-actions') {
 
 export function gatewayPromptPresets() {
   return readJSON('fixtures/gateway-presets.json').map((fixture) => {
+    const pack = packs.get(fixture.pack_id);
+    const operation = pack.operations.find((candidate) => candidate.id === fixture.operation_id);
     const rendered = render({
       packId: fixture.pack_id,
       operationId: fixture.operation_id,
@@ -125,8 +127,14 @@ export function gatewayPromptPresets() {
     return Object.freeze({
       id: fixture.id,
       label: fixture.label,
+      packId: fixture.pack_id,
+      operationId: fixture.operation_id,
+      input: fixture.input,
+      parameters: Object.freeze({ ...fixture.parameters }),
       system: rendered.messages[0].content,
       user: rendered.messages[1].content,
+      responseSchema: rendered.responseSchema,
+      resultTypes: Object.freeze([...operation.result_types]),
       request: Object.freeze({
         operation: rendered.wireOperationId,
         input_text: fixture.input,
