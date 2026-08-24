@@ -1,7 +1,7 @@
 {
   "$schema": "../schemas/contract.schema.json",
   "schema_version": "2.2.0",
-  "contract_version": "4.0.0",
+  "contract_version": "4.0.1",
   "id": "keyboard-suggestions",
   "description": "Compact corrections and optional next-text suggestions for bounded keyboard context.",
   "system_instruction": "You are a writing assistant. Return strict JSON only.",

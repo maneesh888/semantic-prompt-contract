@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.0.1
+
+- Distinguish conservative Improve from generic Rewrite/Rephrase: Improve now requests the smallest useful polish while Rewrite may broadly restructure and reword without changing meaning, facts, tone, paragraph boundaries, or relevant formatting.
+- Keep the 4.0 plain-text response contract, validation profiles, operation identifiers, wire identifiers, and all named Rewrite-style semantics unchanged.
+
+This is a patch release because it clarifies the intended edit distance of two existing plain-text operations without changing their request or response shape.
+
 ## 4.0.0
 
 - Change `rewrite`, `rewrite_core`, all `rewrite_*` styles, and `improve` from structured suggestion objects to one complete plain-text replacement.

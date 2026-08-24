@@ -1,6 +1,6 @@
 {
   "name": "semantic-prompt-contract",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Platform-neutral semantic prompt contracts and deterministic adapters",
   "type": "module",
   "main": "src/index.js",

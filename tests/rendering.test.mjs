@@ -27,7 +27,7 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '4.0.0');
+    assert.equal(first.contractVersion, '4.0.1');
     if (operationId === 'fix_grammar') {
       assert.equal(first.responseFormat, null);
       assert.equal(first.temperature, null);
@@ -56,6 +56,13 @@ test('rewrite and improve render raw source under style-specific complete-replac
   }
   assert.ok(render({ operationId: 'rewrite_shorten', input: 'Text' }).messages[0].content.includes('shorter and more concise'));
   assert.ok(render({ operationId: 'rewrite_professional', input: 'Text' }).messages[0].content.includes('polished, professional tone'));
+  const rewriteInstruction = render({ operationId: 'rewrite', input: 'Text' }).messages[0].content;
+  const improveInstruction = render({ operationId: 'improve', input: 'Text' }).messages[0].content;
+  assert.ok(rewriteInstruction.includes('broadly restructure sentences'));
+  assert.ok(rewriteInstruction.includes('substantially different wording'));
+  assert.ok(improveInstruction.includes('Make only the smallest wording, grammar, and flow edits needed'));
+  assert.ok(improveInstruction.includes('preserve the original sentence structure'));
+  assert.notEqual(rewriteInstruction, improveInstruction);
 });
 
 test('canonical complete-replacement validation accepts safe text and rejects unsafe output', () => {
@@ -165,7 +172,7 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Plain-text operation · Rewrite',
     'Structured operation · Translate to Dutch',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '4.0.0'));
+  assert.ok(presets.every((preset) => preset.contractVersion === '4.0.1'));
   assert.equal(presets[0].request.response_format, null);
   assert.equal(Object.hasOwn(presets[0].request, 'temperature'), false);
   assert.equal(presets[3].request.temperature, 0.1);
@@ -196,7 +203,7 @@ test('generated browser adapter exposes every canonical gateway preset', () => {
   );
   runInNewContext(source, context);
 
-  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '4.0.0');
+  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '4.0.1');
   assert.deepEqual(
     Array.from(
       context.globalThis.SemanticPromptContractBrowser.gatewayPromptPresets,

@@ -29,7 +29,7 @@ final class SemanticPromptContractTests: XCTestCase {
             let first = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             let second = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             XCTAssertEqual(first, second)
-            XCTAssertEqual(first.contractVersion, "4.0.0")
+            XCTAssertEqual(first.contractVersion, "4.0.1")
             XCTAssertEqual(first.messages.map(\.role), ["system", "user"])
             if operation == "fix_grammar" {
                 XCTAssertNil(first.responseFormatType)
