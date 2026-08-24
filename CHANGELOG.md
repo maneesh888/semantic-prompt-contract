@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.2.0
+
+- Add a contract-owned, single-error plain-text grammar preset for fast connection and capability verification.
+- Retain the existing multi-error and complex grammar presets for broader evaluation.
+
+This is a minor release because it adds a diagnostic fixture without changing any production operation rendering.
+
 ## 3.1.0
 
 - Add a contract-owned gateway diagnostic preset for translation to Dutch.
