@@ -7,7 +7,9 @@ const required = [
   'contracts/writing-actions.json',
   'contracts/keyboard-suggestions.json',
   'schemas/contract.schema.json',
+  'fixtures/plain-text-validation/rewrite-replacements.json',
   'adapters/swift/Sources/SemanticPromptContract/SemanticPromptContract.generated.swift',
+  'adapters/swift/Sources/SemanticPromptContract/SemanticPlainTextResponseValidator.swift',
   'adapters/browser/semanticPromptContract.generated.js',
 ];
 const files = new Set(report.files.map((entry) => entry.path));

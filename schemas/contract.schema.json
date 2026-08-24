@@ -12,6 +12,51 @@
     "description": {"type": "string", "minLength": 1},
     "system_instruction": {"type": "string", "minLength": 1},
     "unstructured_system_instruction": {"type": "string", "minLength": 1},
+    "plain_text_system_instruction_template": {"type": "string", "minLength": 1},
+    "plain_text_validation_profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "reject_unchanged",
+          "preserve_boundary_whitespace",
+          "preserve_line_breaks",
+          "reject_new_markdown_fences",
+          "reject_commentary",
+          "reject_raw_error_text",
+          "reject_source_fragment",
+          "minimum_length_ratio",
+          "maximum_length_ratio",
+          "maximum_added_characters",
+          "minimum_word_overlap_ratio",
+          "protected_token_types"
+        ],
+        "properties": {
+          "mode": {"const": "complete_replacement"},
+          "reject_unchanged": {"type": "boolean"},
+          "preserve_boundary_whitespace": {"type": "boolean"},
+          "preserve_line_breaks": {"type": "boolean"},
+          "reject_new_markdown_fences": {"type": "boolean"},
+          "reject_commentary": {"type": "boolean"},
+          "reject_raw_error_text": {"type": "boolean"},
+          "reject_source_fragment": {"type": "boolean"},
+          "minimum_length_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+          "maximum_length_ratio": {"type": "number", "minimum": 1},
+          "maximum_added_characters": {"type": "integer", "minimum": 0},
+          "minimum_word_overlap_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+          "protected_token_types": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "enum": ["number", "url", "email", "mention", "hashtag", "emoji", "markdown_link_destination"]
+            }
+          }
+        }
+      }
+    },
     "user_message_template": {"type": "string", "minLength": 1},
     "rule_line_template": {"type": "string", "minLength": 1},
     "input": {
@@ -68,9 +113,11 @@
             }
           },
           "system_instruction": {"type": "string", "minLength": 1},
+          "plain_text_instruction": {"type": "string", "minLength": 1},
           "user_message_mode": {"enum": ["template", "raw_input"]},
           "response_format": {"enum": ["json_object", "plain_text"]},
           "temperature": {"type": ["number", "null"], "minimum": 0},
+          "plain_text_validation_profile": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
           "max_tokens": {"type": "integer", "minimum": 1},
           "result_types": {"type": "array", "minItems": 1, "items": {"type": "string"}},
           "rules": {"type": "array", "items": {"type": "string", "minLength": 1}},

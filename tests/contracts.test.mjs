@@ -32,7 +32,7 @@ test('operation identifiers are unique and structured operations are complete', 
   assert.ok(writingIds.includes('continue_writing'));
   const contract = readJSON('contracts/writing-actions.json');
   for (const operation of contract.operations) {
-    if (operation.id === 'fix_grammar') assert.equal(operation.rules.length, 0);
+    if (operation.user_message_mode === 'raw_input') assert.equal(operation.rules.length, 0);
     else assert.ok(operation.rules.length > 0);
     assert.ok(operation.result_types.length > 0);
     assert.ok(operation.no_change_behavior.length > 0);
@@ -55,7 +55,7 @@ test('system instructions are package-owned and platform-neutral', () => {
   );
 });
 
-test('fix_grammar alone overrides structured rendering with the plain-text contract', () => {
+test('grammar plus rewrite and improve operations own explicit plain-text contracts', () => {
   const contract = readJSON('contracts/writing-actions.json');
   const grammar = contract.operations.find((operation) => operation.id === 'fix_grammar');
   assert.equal(grammar.user_message_mode, 'raw_input');
@@ -63,9 +63,27 @@ test('fix_grammar alone overrides structured rendering with the plain-text contr
   assert.equal(grammar.temperature, null);
   assert.equal(grammar.max_tokens, 12000);
   assert.equal(grammar.rules.length, 0);
-  for (const operation of contract.operations.filter((candidate) => candidate.id !== 'fix_grammar')) {
+  const replacementOperations = contract.operations.filter((operation) => (
+    operation.id === 'rewrite'
+      || operation.id === 'rewrite_core'
+      || operation.id === 'improve'
+      || operation.id.startsWith('rewrite_')
+  ));
+  assert.equal(replacementOperations.length, 18);
+  for (const operation of replacementOperations) {
+    assert.equal(operation.response_format, 'plain_text');
+    assert.equal(operation.user_message_mode, 'raw_input');
+    assert.deepEqual(operation.result_types, ['plain_text']);
+    assert.equal(operation.rules.length, 0);
+    assert.ok(operation.plain_text_instruction.length > 0);
+    assert.ok(contract.plain_text_validation_profiles[operation.plain_text_validation_profile]);
+  }
+  for (const operation of contract.operations.filter((candidate) => (
+    candidate.id !== 'fix_grammar' && !replacementOperations.includes(candidate)
+  ))) {
     assert.equal(operation.response_format, undefined);
     assert.equal(operation.user_message_mode, undefined);
+    assert.equal(operation.plain_text_validation_profile, undefined);
   }
 });
 

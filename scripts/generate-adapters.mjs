@@ -10,6 +10,7 @@ const manifest = readJSON('contracts/manifest.json');
 const writing = readJSON('contracts/writing-actions.json');
 const suggestions = readJSON('contracts/keyboard-suggestions.json');
 const equivalence = readJSON('fixtures/rendering/equivalence.json');
+const plainTextValidationFixtures = readJSON('fixtures/plain-text-validation/rewrite-replacements.json');
 const gatewayPresets = gatewayPromptPresets();
 
 function swift(value) {
@@ -39,16 +40,23 @@ function ruleExpression(rule) {
   return swift(rule);
 }
 
+function plainTextValidationCode(policy) {
+  if (policy === null) return 'nil';
+  return `SemanticPlainTextValidationPolicy(mode: ${swift(policy.mode)}, rejectUnchanged: ${policy.reject_unchanged}, preserveBoundaryWhitespace: ${policy.preserve_boundary_whitespace}, preserveLineBreaks: ${policy.preserve_line_breaks}, rejectNewMarkdownFences: ${policy.reject_new_markdown_fences}, rejectCommentary: ${policy.reject_commentary}, rejectRawErrorText: ${policy.reject_raw_error_text}, rejectSourceFragment: ${policy.reject_source_fragment}, minimumLengthRatio: ${policy.minimum_length_ratio}, maximumLengthRatio: ${policy.maximum_length_ratio}, maximumAddedCharacters: ${policy.maximum_added_characters}, minimumWordOverlapRatio: ${policy.minimum_word_overlap_ratio}, protectedTokenTypes: [${policy.protected_token_types.map(swift).join(', ')}])`;
+}
+
 const cases = writing.operations.map((operation) => {
   const params = parameterCode(operation);
   const rules = operation.rules.map((rule) => `            ${ruleExpression(rule, operation)}`).join(',\n');
-  const systemInstruction = swift(operation.system_instruction ?? writing.system_instruction);
+  const renderedMetadata = render({ operationId: operation.id, input: '' });
+  const systemInstruction = swift(renderedMetadata.messages[0].content);
   const userMessageMode = swift(operation.user_message_mode ?? 'template');
   const responseFormat = (operation.response_format ?? writing.response.format) === 'json_object' ? swift('json_object') : 'nil';
+  const validation = plainTextValidationCode(renderedMetadata.plainTextValidation);
   const temperature = Object.hasOwn(operation, 'temperature')
     ? (operation.temperature === null ? 'nil' : String(operation.temperature))
     : '0.1';
-  return `    case ${swift(operation.id)}:\n${params.join('\n')}\n        return renderWriting(operationID: ${swift(operation.id)}, wireOperationID: ${swift(operation.wire_operation_id)}, input: input, parameters: validatedParameters, systemInstruction: ${systemInstruction}, userMessageMode: ${userMessageMode}, responseFormatType: ${responseFormat}, temperature: ${temperature}, rules: [\n${rules}\n        ], maxTokens: ${operation.max_tokens})`;
+  return `    case ${swift(operation.id)}:\n${params.join('\n')}\n        return renderWriting(operationID: ${swift(operation.id)}, wireOperationID: ${swift(operation.wire_operation_id)}, input: input, parameters: validatedParameters, systemInstruction: ${systemInstruction}, userMessageMode: ${userMessageMode}, responseFormatType: ${responseFormat}, temperature: ${temperature}, plainTextValidationPolicy: ${validation}, rules: [\n${rules}\n        ], maxTokens: ${operation.max_tokens})`;
 }).join('\n');
 
 const swiftSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.
@@ -76,6 +84,23 @@ public struct SemanticPromptRendering: Equatable, Sendable {
     public let responseFormatType: String?
     public let maxTokens: Int
     public let temperature: Double?
+    public let plainTextValidationPolicy: SemanticPlainTextValidationPolicy?
+}
+
+public struct SemanticPlainTextValidationPolicy: Equatable, Sendable {
+    public let mode: String
+    public let rejectUnchanged: Bool
+    public let preserveBoundaryWhitespace: Bool
+    public let preserveLineBreaks: Bool
+    public let rejectNewMarkdownFences: Bool
+    public let rejectCommentary: Bool
+    public let rejectRawErrorText: Bool
+    public let rejectSourceFragment: Bool
+    public let minimumLengthRatio: Double
+    public let maximumLengthRatio: Double
+    public let maximumAddedCharacters: Int
+    public let minimumWordOverlapRatio: Double
+    public let protectedTokenTypes: [String]
 }
 
 public struct SemanticGatewayPromptPreset: Equatable, Sendable {
@@ -148,7 +173,8 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
             ],
             responseFormatType: nil,
             maxTokens: ${suggestions.operations[0].max_tokens},
-            temperature: nil
+            temperature: nil,
+            plainTextValidationPolicy: nil
         )
     }
 
@@ -162,7 +188,10 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
         }
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw SemanticGatewayPromptValidationError.invalidResponse }
-        guard preset.rendering.responseFormatType != nil else { return content }
+        guard preset.rendering.responseFormatType != nil else {
+            guard preset.rendering.plainTextValidationPolicy != nil else { return content }
+            return try validatePlainTextResponse(content, operationID: preset.rendering.operationID, source: preset.input)
+        }
         guard let data = trimmed.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
               let response = object as? [String: Any],
@@ -218,7 +247,7 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
         return output
     }
 
-    private static func renderWriting(operationID: String, wireOperationID: String, input: String, parameters: [String: String], systemInstruction: String, userMessageMode: String, responseFormatType: String?, temperature: Double?, rules: [String], maxTokens: Int) -> SemanticPromptRendering {
+    private static func renderWriting(operationID: String, wireOperationID: String, input: String, parameters: [String: String], systemInstruction: String, userMessageMode: String, responseFormatType: String?, temperature: Double?, plainTextValidationPolicy: SemanticPlainTextValidationPolicy?, rules: [String], maxTokens: Int) -> SemanticPromptRendering {
         let numberedRules = rules.enumerated().map {
             substitute(writingRuleLineTemplate, values: ["index": String($0.offset + 1), "rule": $0.element])
         }.joined(separator: "\\n")
@@ -242,7 +271,8 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
             ],
             responseFormatType: responseFormatType,
             maxTokens: maxTokens,
-            temperature: temperature
+            temperature: temperature,
+            plainTextValidationPolicy: plainTextValidationPolicy
         )
     }
 
@@ -353,6 +383,15 @@ struct SemanticPromptParityFixture {
     let expectedUserMessage: String
 }
 
+struct SemanticPlainTextValidationFixture {
+    let caseID: String
+    let operationID: String
+    let source: String
+    let response: String
+    let valid: Bool
+    let expected: String?
+}
+
 let semanticPromptParityFixtures: [SemanticPromptParityFixture] = [
 ${equivalence.map((fixture) => {
   const rendered = render({
@@ -367,6 +406,10 @@ ${equivalence.map((fixture) => {
     : entries.map(([name, value]) => `${swift(name)}: ${swift(value)}`).join(', ');
   return `    SemanticPromptParityFixture(caseID: ${swift(fixture.case_id)}, packID: ${swift(fixture.pack_id)}, operationID: ${swift(fixture.operation_id)}, input: ${swift(fixture.input)}, parameters: [${parameters}], expectedUserMessage: ${swift(rendered.messages.at(-1).content)})`;
 }).join(',\n')}
+]
+
+let semanticPlainTextValidationFixtures: [SemanticPlainTextValidationFixture] = [
+${plainTextValidationFixtures.map((fixture) => `    SemanticPlainTextValidationFixture(caseID: ${swift(fixture.id)}, operationID: ${swift(fixture.operation_id)}, source: ${swift(fixture.source)}, response: ${swift(fixture.response)}, valid: ${fixture.valid}, expected: ${fixture.expected === undefined ? 'nil' : swift(fixture.expected)})`).join(',\n')}
 ]
 `;
 if (check) {
