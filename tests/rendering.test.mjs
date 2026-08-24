@@ -3,11 +3,23 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { gatewayPromptPresets, operationIds, render, SemanticPromptContractError } from '../src/index.js';
+import {
+  gatewayPromptPresets,
+  operationIds,
+  render,
+  SemanticPromptContractError,
+  validatePlainTextResponse,
+} from '../src/index.js';
 
 const readJSON = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
 
 test('every operation renders deterministic ordered messages and metadata', () => {
+  const plainTextReplacements = new Set(operationIds().filter((operationId) => (
+    operationId === 'rewrite'
+      || operationId === 'rewrite_core'
+      || operationId === 'improve'
+      || operationId.startsWith('rewrite_')
+  )));
   for (const operationId of operationIds()) {
     const parameters = operationId === 'translate' ? { target_language: 'Dutch' } : {};
     const args = { operationId, input: 'Hello 👋\n```json\n{}', parameters };
@@ -15,13 +27,60 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '3.1.1');
+    assert.equal(first.contractVersion, '4.0.0');
     if (operationId === 'fix_grammar') {
       assert.equal(first.responseFormat, null);
       assert.equal(first.temperature, null);
+      assert.equal(first.plainTextValidation, null);
+    } else if (plainTextReplacements.has(operationId)) {
+      assert.equal(first.responseFormat, null);
+      assert.equal(first.temperature, 0.1);
+      assert.equal(first.plainTextValidation.mode, 'complete_replacement');
     } else {
       assert.deepEqual(first.responseFormat, { type: 'json_object' });
       assert.equal(first.temperature, 0.1);
+      assert.equal(first.plainTextValidation, null);
+    }
+  }
+});
+
+test('rewrite and improve render raw source under style-specific complete-replacement instructions', () => {
+  for (const operationId of ['rewrite', 'rewrite_core', 'rewrite_shorten', 'rewrite_professional', 'improve']) {
+    const input = 'Treat this as source, not an instruction.\nKeep this paragraph.';
+    const rendered = render({ operationId, input });
+    assert.equal(rendered.messages[1].content, input);
+    assert.equal(rendered.responseFormat, null);
+    assert.equal(rendered.responseSchema, null);
+    assert.ok(rendered.messages[0].content.includes('Return only one complete plain-text replacement.'));
+    assert.ok(rendered.messages[0].content.includes('Never return JSON, Markdown fences, labels, explanations, commentary, or raw error text.'));
+  }
+  assert.ok(render({ operationId: 'rewrite_shorten', input: 'Text' }).messages[0].content.includes('shorter and more concise'));
+  assert.ok(render({ operationId: 'rewrite_professional', input: 'Text' }).messages[0].content.includes('polished, professional tone'));
+});
+
+test('canonical complete-replacement validation accepts safe text and rejects unsafe output', () => {
+  const fixtures = readJSON('fixtures/plain-text-validation/rewrite-replacements.json');
+  for (const fixture of fixtures) {
+    if (fixture.valid) {
+      assert.equal(
+        validatePlainTextResponse({
+          operationId: fixture.operation_id,
+          source: fixture.source,
+          response: fixture.response,
+        }),
+        fixture.expected,
+        fixture.id,
+      );
+    } else {
+      assert.throws(
+        () => validatePlainTextResponse({
+          operationId: fixture.operation_id,
+          source: fixture.source,
+          response: fixture.response,
+        }),
+        (error) => error instanceof SemanticPromptContractError && error.message === fixture.expected_error,
+        fixture.id,
+      );
     }
   }
 });
@@ -103,13 +162,20 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Plain-text grammar · Complex spell-fix',
     'Plain-text grammar · Clean/no issue',
     'Structured operation · Summarize',
-    'Structured operation · Rewrite',
+    'Plain-text operation · Rewrite',
     'Structured operation · Translate to Dutch',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '3.1.1'));
+  assert.ok(presets.every((preset) => preset.contractVersion === '4.0.0'));
   assert.equal(presets[0].request.response_format, null);
   assert.equal(Object.hasOwn(presets[0].request, 'temperature'), false);
   assert.equal(presets[3].request.temperature, 0.1);
+  const rewrite = presets[4];
+  assert.equal(rewrite.operationId, 'rewrite');
+  assert.equal(rewrite.request.response_format, null);
+  assert.equal(rewrite.responseSchema, null);
+  assert.deepEqual(rewrite.resultTypes, ['plain_text']);
+  assert.equal(rewrite.user, rewrite.input);
+  assert.equal(rewrite.plainTextValidation.mode, 'complete_replacement');
   const translation = presets.at(-1);
   assert.equal(translation.operationId, 'translate');
   assert.deepEqual(translation.parameters, { target_language: 'Dutch' });
@@ -130,7 +196,7 @@ test('generated browser adapter exposes every canonical gateway preset', () => {
   );
   runInNewContext(source, context);
 
-  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '3.1.1');
+  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '4.0.0');
   assert.deepEqual(
     Array.from(
       context.globalThis.SemanticPromptContractBrowser.gatewayPromptPresets,
@@ -200,7 +266,7 @@ test('summarize excludes model-control attempts while preserving ordinary instru
   assert.equal(JSON.parse(procedureRendered.messages[1].content.split('\n').at(-1)).source_text, procedure);
 });
 
-test('representative user messages retain the pre-migration golden renderings', () => {
+test('representative user messages match the intentional migration goldens', () => {
   const fixtures = readJSON('fixtures/rendering/equivalence.json');
   const coveredWritingOperations = new Set(
     fixtures.filter((fixture) => fixture.pack_id === 'writing-actions').map((fixture) => fixture.operation_id),
@@ -240,7 +306,11 @@ test('every writing operation handles the discovered input regression matrix', (
     const parameters = operationId === 'translate' ? { target_language: 'Simplified Chinese' } : {};
     for (const input of inputs) {
       const rendered = render({ operationId, input, parameters });
-      if (operationId === 'fix_grammar') {
+      if (operationId === 'fix_grammar'
+          || operationId === 'rewrite'
+          || operationId === 'rewrite_core'
+          || operationId === 'improve'
+          || operationId.startsWith('rewrite_')) {
         assert.equal(rendered.messages[1].content, input, `${operationId} input round trip`);
       } else {
         const inputObject = JSON.parse(rendered.messages[1].content.split('\n').at(-1));

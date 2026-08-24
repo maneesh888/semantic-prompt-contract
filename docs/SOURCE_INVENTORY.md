@@ -13,7 +13,7 @@ Canonical behavior was duplicated in:
 - `OpenKeyboardExtension/KeyboardAIService.swift`, where 15 rewrite-style instructions and translation target prompt names were selected before calling the production contract renderer.
 - `OpenKeyboard/Services/NetworkManager.swift` and `OpenKeyboard/Views/LiveAITestHarnessView.swift`, which used the same production contract for live diagnostics.
 
-The structured request path sends ordered `system` and `user` messages, `operation`, `input_text`, `response_format: {"type":"json_object"}`, `temperature`, `max_tokens`, and `stream: false` through the configured gateway. The package owns the semantic messages, operation/wire identifiers, maximum-token metadata, and response-format requirement. It does not own the HTTP request, credentials, model, timeout, gateway URL, or parser.
+The request path sends ordered `system` and `user` messages, `operation`, `input_text`, optional `response_format`, `temperature`, `max_tokens`, and `stream: false` through the configured gateway. Starting in 4.0.0, Rewrite and Improve omit `response_format` and return one plain-text replacement; structured actions retain `response_format: {"type":"json_object"}`. The package owns semantic messages, operation/wire identifiers, maximum-token metadata, response-format requirements, and complete-replacement validation. It does not own the HTTP request, credentials, model, timeout, gateway URL, structured parser compatibility, or UI state.
 
 The shared pack contains `fix_grammar`, the app and OpenKeyboardCore rewrite renderings, `improve`, all 15 rewrite-style renderings, `summarize`, parameterized `translate`, and `continue_writing`. The existing caller-defined `WritingAction.custom` remains a non-canonical extensibility route because its identifier and wording are supplied at runtime rather than maintained by either repository.
 
@@ -29,6 +29,7 @@ LLM Gateway PR #10 removed five OpenKeyboard-specific tester presets from `publi
 
 - `translate` encodes an ASCII-whitespace-trimmed target-language label in `operation_parameters` and retains the existing generic fallback when a diagnostic does not supply one. Version 2.0.0 rejects multiline, control-bearing, overlong, or non-language-label values; the value is never interpolated into operation rules.
 - Rewrite styles are stable semantic operation identifiers whose wire identifier remains `rewrite`.
+- Version 4.0.0 changes Rewrite/Improve request and response semantics to style-specific complete plain-text replacement while preserving their stable operation and wire identifiers.
 - Version 1.0.0 retained the original `<input_text>` delimiter rendering. Version 2.0.0 replaces it with a canonical JSON-string `source_text` value so delimiter-like, newline-bearing, or instruction-like content remains encoded data.
 - Bounded suggestion input retains the existing 500-character prefix behavior, with character limits explicitly defined as Unicode scalar values in both JavaScript and Swift.
 - Unknown packs, operations, or parameters are rejected by the shared renderers.

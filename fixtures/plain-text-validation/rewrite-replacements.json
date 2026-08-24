@@ -1,0 +1,114 @@
+[
+  {
+    "id": "rewrite-preserves-source-boundary-whitespace",
+    "operation_id": "rewrite",
+    "source": "  send the update to @maya by 10:30 🙂.  ",
+    "response": "Please send the update to @maya by 10:30 🙂.",
+    "valid": true,
+    "expected": "  Please send the update to @maya by 10:30 🙂.  "
+  },
+  {
+    "id": "formal-preserves-paragraphs-and-link-target",
+    "operation_id": "rewrite_formal",
+    "source": "please review [the plan](https://example.com/plan).\n\nwe need approval by 18:00.",
+    "response": "Please review [the plan](https://example.com/plan).\n\nWe require approval by 18:00.",
+    "valid": true,
+    "expected": "Please review [the plan](https://example.com/plan).\n\nWe require approval by 18:00."
+  },
+  {
+    "id": "shorten-allows-bounded-contraction",
+    "operation_id": "rewrite_shorten",
+    "source": "Please send the final project update to the support team before 17:00 today.",
+    "response": "Send the final project update to support by 17:00 today.",
+    "valid": true,
+    "expected": "Send the final project update to support by 17:00 today."
+  },
+  {
+    "id": "detailed-allows-bounded-expansion",
+    "operation_id": "rewrite_detailed",
+    "source": "The release starts at 09:00.",
+    "response": "The planned release starts at 09:00 on the agreed timeline.",
+    "valid": true,
+    "expected": "The planned release starts at 09:00 on the agreed timeline."
+  },
+  {
+    "id": "reject-empty",
+    "operation_id": "improve",
+    "source": "This update should be clearer.",
+    "response": "  \n",
+    "valid": false,
+    "expected_error": "empty"
+  },
+  {
+    "id": "reject-unchanged",
+    "operation_id": "improve",
+    "source": "This update should be clearer.",
+    "response": "This update should be clearer.",
+    "valid": false,
+    "expected_error": "unchanged"
+  },
+  {
+    "id": "reject-commentary",
+    "operation_id": "rewrite_professional",
+    "source": "send the customer an update today.",
+    "response": "Here is the rewritten text: Please send the customer an update today.",
+    "valid": false,
+    "expected_error": "commentary"
+  },
+  {
+    "id": "reject-markdown-fence-wrapper",
+    "operation_id": "rewrite_fluent",
+    "source": "the update needs clearer wording.",
+    "response": "```\nThe update requires clearer wording.\n```",
+    "valid": false,
+    "expected_error": "markdown_fence"
+  },
+  {
+    "id": "reject-truncated-prefix",
+    "operation_id": "rewrite",
+    "source": "The first paragraph contains a complete update for the project team and customer.",
+    "response": "The first paragraph contains a complete update",
+    "valid": false,
+    "expected_error": "source_fragment"
+  },
+  {
+    "id": "reject-unsafe-expansion",
+    "operation_id": "rewrite",
+    "source": "Send the update today.",
+    "response": "Send the update today with a newly invented customer history, several unrelated project milestones, detailed financial projections, and additional unsupported commitments that were never present in the source.",
+    "valid": false,
+    "expected_error": "unsafe_expansion"
+  },
+  {
+    "id": "reject-raw-error",
+    "operation_id": "rewrite_friendly",
+    "source": "Send a friendly update to the customer.",
+    "response": "Bad gateway: the upstream model is unavailable.",
+    "valid": false,
+    "expected_error": "raw_error"
+  },
+  {
+    "id": "reject-lost-paragraph-boundary",
+    "operation_id": "rewrite_formal",
+    "source": "The review is complete.\n\nApproval is still required.",
+    "response": "The review has concluded. Approval is still required.",
+    "valid": false,
+    "expected_error": "line_breaks"
+  },
+  {
+    "id": "reject-changed-protected-fact",
+    "operation_id": "rewrite_confident",
+    "source": "Tell @maya that launch is at 10:30 🙂.",
+    "response": "Tell @maya confidently that launch is at 11:30 🙂.",
+    "valid": false,
+    "expected_error": "protected_number"
+  },
+  {
+    "id": "reject-unrelated-meaning",
+    "operation_id": "rewrite",
+    "source": "The support team will review the customer refund request tomorrow morning.",
+    "response": "A distant mountain becomes visible after the winter storm passes.",
+    "valid": false,
+    "expected_error": "meaning_overlap"
+  }
+]

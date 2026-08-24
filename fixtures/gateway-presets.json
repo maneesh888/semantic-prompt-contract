@@ -33,7 +33,7 @@
   },
   {
     "id": "structured-operation-rewrite",
-    "label": "Structured operation · Rewrite",
+    "label": "Plain-text operation · Rewrite",
     "pack_id": "writing-actions",
     "operation_id": "rewrite",
     "input": "hey team the app has issues and we need fix soon please check it",

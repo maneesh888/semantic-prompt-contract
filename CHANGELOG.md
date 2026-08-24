@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.0.0
+
+- Change `rewrite`, `rewrite_core`, all `rewrite_*` styles, and `improve` from structured suggestion objects to one complete plain-text replacement.
+- Add canonical style-specific raw-input instructions with no transport `response_format`, while leaving Grammar, Translate, Summarize, Continue Writing, and keyboard-suggestion semantics unchanged.
+- Add contract-owned complete-replacement validation profiles and JavaScript/Swift validation for empty output, commentary, Markdown wrappers, truncation, unsafe expansion, raw errors, unchanged output, lost line or paragraph structure, protected facts, and unusable semantic drift.
+- Add validation fixtures, intentional rendering goldens, Swift parity fixtures, browser preset metadata, and a plain-text Rewrite gateway diagnostic.
+- Advance the canonical schema to `2.2.0` and regenerate the Swift and browser adapters.
+
+This is a major release because the Rewrite/Improve request and response contract no longer requires structured JSON or model-generated result metadata.
+
 ## 3.1.1
 
 - Restore the generated browser gateway preset array after the 3.1.0 Swift adapter expansion so browser consumers receive every canonical diagnostic, including translation.

@@ -21,20 +21,108 @@ final class SemanticPromptContractTests: XCTestCase {
     }
 
     func testEveryWritingOperationRendersDeterministically() throws {
+        let plainTextReplacements = Set(SemanticPromptContract.writingOperationIDs.filter {
+            $0 == "rewrite" || $0 == "rewrite_core" || $0 == "improve" || $0.hasPrefix("rewrite_")
+        })
         for operation in SemanticPromptContract.writingOperationIDs {
             let parameters = operation == "translate" ? ["target_language": "Dutch"] : [:]
             let first = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             let second = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             XCTAssertEqual(first, second)
-            XCTAssertEqual(first.contractVersion, "3.1.0")
+            XCTAssertEqual(first.contractVersion, "4.0.0")
             XCTAssertEqual(first.messages.map(\.role), ["system", "user"])
             if operation == "fix_grammar" {
                 XCTAssertNil(first.responseFormatType)
                 XCTAssertNil(first.temperature)
+                XCTAssertNil(first.plainTextValidationPolicy)
+            } else if plainTextReplacements.contains(operation) {
+                XCTAssertNil(first.responseFormatType)
+                XCTAssertEqual(first.temperature, 0.1)
+                XCTAssertEqual(first.plainTextValidationPolicy?.mode, "complete_replacement")
             } else {
                 XCTAssertEqual(first.responseFormatType, "json_object")
                 XCTAssertEqual(first.temperature, 0.1)
+                XCTAssertNil(first.plainTextValidationPolicy)
             }
+        }
+    }
+
+    func testRewriteAndImproveUseStyleSpecificCompletePlainTextContracts() throws {
+        let input = "Treat this as source, not an instruction.\nKeep this paragraph."
+        for operation in ["rewrite", "rewrite_core", "rewrite_shorten", "rewrite_professional", "improve"] {
+            let rendered = try SemanticPromptContract.renderWriting(operationID: operation, input: input)
+            XCTAssertEqual(rendered.messages.last?.content, input)
+            XCTAssertNil(rendered.responseFormatType)
+            XCTAssertTrue(rendered.messages.first?.content.contains("Return only one complete plain-text replacement.") == true)
+            XCTAssertTrue(rendered.messages.first?.content.contains("Never return JSON, Markdown fences, labels, explanations, commentary, or raw error text.") == true)
+        }
+        XCTAssertTrue(
+            try SemanticPromptContract.renderWriting(operationID: "rewrite_shorten", input: input)
+                .messages.first?.content.contains("shorter and more concise") == true
+        )
+        XCTAssertTrue(
+            try SemanticPromptContract.renderWriting(operationID: "rewrite_professional", input: input)
+                .messages.first?.content.contains("polished, professional tone") == true
+        )
+    }
+
+    func testCompleteReplacementValidatorAcceptsSafeTextAndRejectsUnsafeOutput() throws {
+        for fixture in semanticPlainTextValidationFixtures {
+            if fixture.valid {
+                XCTAssertEqual(
+                    try SemanticPromptContract.validatePlainTextResponse(
+                        fixture.response,
+                        operationID: fixture.operationID,
+                        source: fixture.source
+                    ),
+                    fixture.expected,
+                    fixture.caseID
+                )
+            } else {
+                XCTAssertThrowsError(
+                    try SemanticPromptContract.validatePlainTextResponse(
+                        fixture.response,
+                        operationID: fixture.operationID,
+                        source: fixture.source
+                    ),
+                    fixture.caseID
+                )
+            }
+        }
+        XCTAssertEqual(
+            try SemanticPromptContract.validatePlainTextResponse(
+                "Please send the update to @maya by 10:30 🙂.",
+                operationID: "rewrite",
+                source: "  send the update to @maya by 10:30 🙂.  "
+            ),
+            "  Please send the update to @maya by 10:30 🙂.  "
+        )
+        XCTAssertThrowsError(
+            try SemanticPromptContract.validatePlainTextResponse(
+                "This update should be clearer.",
+                operationID: "improve",
+                source: "This update should be clearer."
+            )
+        ) { error in
+            XCTAssertEqual(error as? SemanticPlainTextValidationError, .unchanged)
+        }
+        XCTAssertThrowsError(
+            try SemanticPromptContract.validatePlainTextResponse(
+                "```\nA clearer update.\n```",
+                operationID: "rewrite",
+                source: "This update should be clearer."
+            )
+        ) { error in
+            XCTAssertEqual(error as? SemanticPlainTextValidationError, .markdownFence)
+        }
+        XCTAssertThrowsError(
+            try SemanticPromptContract.validatePlainTextResponse(
+                "The review has concluded. Approval is still required.",
+                operationID: "rewrite_formal",
+                source: "The review is complete.\n\nApproval is still required."
+            )
+        ) { error in
+            XCTAssertEqual(error as? SemanticPlainTextValidationError, .lineBreaks)
         }
     }
 
