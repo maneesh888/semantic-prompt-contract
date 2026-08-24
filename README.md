@@ -1,6 +1,6 @@
 # semantic-prompt-contract
 
-`semantic-prompt-contract` is the canonical, versioned source for reusable semantic instructions used by OpenKeyboard and its gateway diagnostics. Version `3.1.0` adds contract-owned Swift gateway diagnostic presets and validation, including translation to Dutch, while retaining the `3.0.0` production renderings.
+`semantic-prompt-contract` is the canonical, versioned source for reusable semantic instructions used by OpenKeyboard and its gateway diagnostics. Version `3.1.1` exposes contract-owned gateway diagnostic presets consistently to browser and Swift consumers, including translation to Dutch, while retaining the `3.0.0` production renderings.
 
 The package owns operation identifiers, descriptions, parameters, semantic instructions, deterministic rendering, response-format metadata, response schemas, examples, and fixtures. It deliberately does not own UI, networking, authentication, API keys, model selection, provider routing, persistence, application state, or deployment configuration.
 

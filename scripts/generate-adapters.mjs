@@ -341,7 +341,7 @@ const swiftParityOutput = join(root, 'adapters/swift/Tests/SemanticPromptContrac
 const browserSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.\n` +
   `globalThis.SemanticPromptContractBrowser=Object.freeze(${JSON.stringify({
     contractVersion: manifest.contract_version,
-    gatewayPromptPresets,
+    gatewayPromptPresets: gatewayPresets,
   })});\n`;
 const swiftParitySource = `// Generated from fixtures/rendering/equivalence.json by scripts/generate-adapters.mjs. Do not edit manually.
 struct SemanticPromptParityFixture {
