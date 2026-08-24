@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { gatewayPromptPresets, operationIds, render, SemanticPromptContractError } from '../src/index.js';
 
 const readJSON = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
@@ -14,7 +15,7 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '3.1.0');
+    assert.equal(first.contractVersion, '3.1.1');
     if (operationId === 'fix_grammar') {
       assert.equal(first.responseFormat, null);
       assert.equal(first.temperature, null);
@@ -105,7 +106,7 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Structured operation · Rewrite',
     'Structured operation · Translate to Dutch',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '3.1.0'));
+  assert.ok(presets.every((preset) => preset.contractVersion === '3.1.1'));
   assert.equal(presets[0].request.response_format, null);
   assert.equal(Object.hasOwn(presets[0].request, 'temperature'), false);
   assert.equal(presets[3].request.temperature, 0.1);
@@ -119,6 +120,28 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
   const payload = JSON.parse(translation.user.split('\n').at(-1));
   assert.equal(payload.source_text, translation.input);
   assert.deepEqual(payload.operation_parameters, { target_language: 'Dutch' });
+});
+
+test('generated browser adapter exposes every canonical gateway preset', () => {
+  const context = { globalThis: {} };
+  const source = readFileSync(
+    new URL('../adapters/browser/semanticPromptContract.generated.js', import.meta.url),
+    'utf8',
+  );
+  runInNewContext(source, context);
+
+  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '3.1.1');
+  assert.deepEqual(
+    Array.from(
+      context.globalThis.SemanticPromptContractBrowser.gatewayPromptPresets,
+      (preset) => preset.label,
+    ),
+    gatewayPromptPresets().map((preset) => preset.label),
+  );
+  assert.ok(
+    context.globalThis.SemanticPromptContractBrowser.gatewayPromptPresets
+      .some((preset) => preset.operationId === 'translate'),
+  );
 });
 
 test('grammar rendering requests one complete conservative plain-text correction', () => {

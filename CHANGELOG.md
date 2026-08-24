@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.1
+
+- Restore the generated browser gateway preset array after the 3.1.0 Swift adapter expansion so browser consumers receive every canonical diagnostic, including translation.
+
+This is a patch release because it repairs a generated adapter regression without changing semantic operation behavior.
+
 ## 3.1.0
 
 - Add a contract-owned gateway diagnostic preset for translation to Dutch.
