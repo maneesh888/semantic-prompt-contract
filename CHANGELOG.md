@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.0
+
+- Add the contract-owned fast, single-error plain-text grammar gateway preset from the maintained 3.x line.
+- Keep all 4.0.1 operation renderings, validation profiles, and response contracts unchanged.
+
+This is a minor release because it adds a backward-compatible diagnostic fixture and generated adapter entry without changing production operation behavior.
+
 ## 4.0.1
 
 - Distinguish conservative Improve from generic Rewrite/Rephrase: Improve now requests the smallest useful polish while Rewrite may broadly restructure and reword without changing meaning, facts, tone, paragraph boundaries, or relevant formatting.

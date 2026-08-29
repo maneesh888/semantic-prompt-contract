@@ -1,5 +1,13 @@
 [
   {
+    "id": "plain-grammar-fast",
+    "label": "Plain-text grammar · Fast single error",
+    "pack_id": "writing-actions",
+    "operation_id": "fix_grammar",
+    "input": "The gateway connection are ready.",
+    "parameters": {}
+  },
+  {
     "id": "structured-grammar-multi-error",
     "label": "Plain-text grammar · Multi-error",
     "pack_id": "writing-actions",
