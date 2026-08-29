@@ -29,7 +29,7 @@ final class SemanticPromptContractTests: XCTestCase {
             let first = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             let second = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             XCTAssertEqual(first, second)
-            XCTAssertEqual(first.contractVersion, "4.0.1")
+            XCTAssertEqual(first.contractVersion, "4.1.0")
             XCTAssertEqual(first.messages.map(\.role), ["system", "user"])
             if operation == "fix_grammar" {
                 XCTAssertNil(first.responseFormatType)
@@ -155,6 +155,25 @@ final class SemanticPromptContractTests: XCTestCase {
         let payloadData = try XCTUnwrap(String(try XCTUnwrap(lines.last)).data(using: .utf8))
         let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: payloadData) as? [String: Any])
         XCTAssertEqual((payload["operation_parameters"] as? [String: String])?["target_language"], value)
+    }
+
+    func testGatewayFastGrammarPresetOwnsRenderingFixtureAndValidation() throws {
+        let preset = try XCTUnwrap(SemanticPromptContract.gatewayPromptPreset(id: "plain-grammar-fast"))
+        XCTAssertEqual(preset.label, "Plain-text grammar · Fast single error")
+        XCTAssertEqual(preset.input, "The gateway connection are ready.")
+        XCTAssertEqual(preset.rendering.operationID, "fix_grammar")
+        XCTAssertEqual(preset.rendering.wireOperationID, "fix_grammar")
+        XCTAssertEqual(preset.rendering.messages.last?.content, preset.input)
+        XCTAssertNil(preset.rendering.responseFormatType)
+        XCTAssertNil(preset.rendering.temperature)
+        XCTAssertEqual(preset.resultTypes, ["plain_text"])
+        XCTAssertEqual(
+            try SemanticPromptContract.validateGatewayPromptResponse(
+                "The gateway connection is ready.",
+                presetID: preset.id
+            ),
+            "The gateway connection is ready."
+        )
     }
 
     func testGatewayTranslationPresetOwnsDutchRenderingAndValidation() throws {

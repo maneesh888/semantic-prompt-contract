@@ -27,7 +27,7 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '4.0.1');
+    assert.equal(first.contractVersion, '4.1.0');
     if (operationId === 'fix_grammar') {
       assert.equal(first.responseFormat, null);
       assert.equal(first.temperature, null);
@@ -165,6 +165,7 @@ test('Unicode scalar bounds are explicit and deterministic', () => {
 test('gateway compatibility presets are generated from canonical fixtures', () => {
   const presets = gatewayPromptPresets();
   assert.deepEqual(presets.map((preset) => preset.label), [
+    'Plain-text grammar · Fast single error',
     'Plain-text grammar · Multi-error',
     'Plain-text grammar · Complex spell-fix',
     'Plain-text grammar · Clean/no issue',
@@ -172,11 +173,11 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Plain-text operation · Rewrite',
     'Structured operation · Translate to Dutch',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '4.0.1'));
+  assert.ok(presets.every((preset) => preset.contractVersion === '4.1.0'));
   assert.equal(presets[0].request.response_format, null);
   assert.equal(Object.hasOwn(presets[0].request, 'temperature'), false);
-  assert.equal(presets[3].request.temperature, 0.1);
-  const rewrite = presets[4];
+  assert.equal(presets[4].request.temperature, 0.1);
+  const rewrite = presets[5];
   assert.equal(rewrite.operationId, 'rewrite');
   assert.equal(rewrite.request.response_format, null);
   assert.equal(rewrite.responseSchema, null);
@@ -203,7 +204,7 @@ test('generated browser adapter exposes every canonical gateway preset', () => {
   );
   runInNewContext(source, context);
 
-  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '4.0.1');
+  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '4.1.0');
   assert.deepEqual(
     Array.from(
       context.globalThis.SemanticPromptContractBrowser.gatewayPromptPresets,
