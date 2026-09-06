@@ -7,11 +7,13 @@ public enum SemanticPlainTextValidationError: Error, Equatable, Sendable {
     case unchanged
     case commentary
     case rawError
+    case jsonContainer
     case markdownFence
     case lineBreaks
     case truncated
     case unsafeExpansion
     case sourceFragment
+    case sourceRepetition
     case protectedToken(String)
     case meaningOverlap
 }
@@ -23,8 +25,19 @@ public extension SemanticPromptContract {
         source: String
     ) throws -> String {
         let rendering = try renderWriting(operationID: operationID, input: source)
+        return try validatePlainTextResponse(response, rendering: rendering, source: source)
+    }
+
+    static func validatePlainTextResponse(
+        _ response: String,
+        rendering: SemanticPromptRendering,
+        source: String
+    ) throws -> String {
+        guard rendering.packID == "writing-actions" else {
+            throw SemanticPlainTextValidationError.unsupportedOperation(rendering.operationID)
+        }
         guard let policy = rendering.plainTextValidationPolicy else {
-            throw SemanticPlainTextValidationError.unsupportedOperation(operationID)
+            throw SemanticPlainTextValidationError.unsupportedOperation(rendering.operationID)
         }
         guard !response.unicodeScalars.contains(where: { $0.value == 0 || $0.value == 0xFFFD }) else {
             throw SemanticPlainTextValidationError.invalidEncoding
@@ -34,16 +47,27 @@ public extension SemanticPromptContract {
         let responseParts = boundaryParts(response)
         let sourceCore = sourceParts.core
         let responseCore = responseParts.core
+        let sourceLength = sourceCore.unicodeScalars.count
+        let responseLength = responseCore.unicodeScalars.count
         guard !responseCore.isEmpty else { throw SemanticPlainTextValidationError.empty }
-        guard !policy.rejectUnchanged || responseCore != sourceCore else {
+        guard !policy.rejectUnchanged
+                || responseCore != sourceCore
+                || sourceLength <= policy.allowUnchangedBelowSourceCharacters else {
             throw SemanticPlainTextValidationError.unchanged
         }
 
-        let commentaryPrefixes = [
+        let commonCommentaryPrefixes = [
             "here is the rewrite:", "here is the rewritten text:", "here is the improved text:",
             "rewritten text:", "improved text:", "rewrite:", "sure,", "certainly,", "of course,",
             "i rewrote ", "i have rewritten ", "i improved ", "i have improved ",
+            "result:", "operation result:", "writing result:", "response:", "output:", "answer:",
         ]
+        let modeCommentaryPrefixes: [String: [String]] = [
+            "summary": ["here is the summary:", "summary:", "summarized text:", "in summary:"],
+            "translation": ["here is the translation:", "translation:", "translated text:"],
+            "continuation": ["here is the continuation:", "continuation:", "continued text:"],
+        ]
+        let commentaryPrefixes = commonCommentaryPrefixes + (modeCommentaryPrefixes[policy.mode] ?? [])
         let commentarySuffixes = [
             "hope this helps.", "let me know if you need anything else.", "would you like another version?",
         ]
@@ -63,38 +87,60 @@ public extension SemanticPromptContract {
             throw SemanticPlainTextValidationError.rawError
         }
 
+        if policy.rejectJSONContainers,
+           responseCore.hasPrefix("{") || responseCore.hasPrefix("[") {
+            throw SemanticPlainTextValidationError.jsonContainer
+        }
+
+        if policy.rejectTruncationMarkers,
+           !regexMatches(#"(?:^|\s)(?:\[(?:output\s+)?truncated\]|<(?:output\s+)?truncated>|\[incomplete\])$"#, in: responseCore, caseInsensitive: true).isEmpty {
+            throw SemanticPlainTextValidationError.truncated
+        }
+
         if policy.rejectNewMarkdownFences {
-            let introducedOpeningFence = responseCore.hasPrefix("```") && !sourceCore.hasPrefix("```")
-            let introducedClosingFence = responseCore.hasSuffix("```") && !sourceCore.hasSuffix("```")
-            guard !introducedOpeningFence, !introducedClosingFence else {
+            let sourceFences = regexMatches(#"`{3,}"#, in: sourceCore)
+            let responseFences = regexMatches(#"`{3,}"#, in: responseCore)
+            guard sourceFences == responseFences else {
                 throw SemanticPlainTextValidationError.markdownFence
             }
         }
 
         if policy.preserveLineBreaks,
-           multiset(regexMatches(#"\r\n|\r|\n"#, in: sourceCore))
-            != multiset(regexMatches(#"\r\n|\r|\n"#, in: responseCore)) {
+           regexMatches(#"(?:(?:\r\n|\r|\n))+"#, in: sourceCore)
+            != regexMatches(#"(?:(?:\r\n|\r|\n))+"#, in: responseCore) {
             throw SemanticPlainTextValidationError.lineBreaks
         }
 
-        let sourceLength = sourceCore.unicodeScalars.count
-        let responseLength = responseCore.unicodeScalars.count
-        if sourceLength >= 20,
+        if responseLength > policy.maximumOutputCharacters {
+            throw SemanticPlainTextValidationError.unsafeExpansion
+        }
+        if policy.enforceLengthRatio,
+           sourceLength >= 20,
            Double(responseLength) < ceil(Double(sourceLength) * policy.minimumLengthRatio) {
             throw SemanticPlainTextValidationError.truncated
         }
-        if sourceLength >= 20,
+        if policy.enforceLengthRatio,
+           sourceLength >= 20,
            Double(responseLength) > floor(Double(sourceLength) * policy.maximumLengthRatio) {
             throw SemanticPlainTextValidationError.unsafeExpansion
         }
-        if responseLength - sourceLength > policy.maximumAddedCharacters {
+        if policy.enforceMaximumAddedCharacters,
+           responseLength - sourceLength > policy.maximumAddedCharacters {
             throw SemanticPlainTextValidationError.unsafeExpansion
         }
         if policy.rejectSourceFragment,
            responseCore != sourceCore,
-           responseCore.count < sourceCore.count,
+           responseLength < sourceLength,
            sourceCore.hasPrefix(responseCore) || sourceCore.hasSuffix(responseCore) {
             throw SemanticPlainTextValidationError.sourceFragment
+        }
+        if policy.rejectSourceRepetition,
+           repeatsCompleteSource(
+               sourceCore,
+               response: responseCore,
+               minimumEmbeddedCharacters: policy.minimumEmbeddedSourceRepetitionCharacters
+           ) {
+            throw SemanticPlainTextValidationError.sourceRepetition
         }
 
         for type in policy.protectedTokenTypes {
@@ -103,10 +149,14 @@ public extension SemanticPromptContract {
                 throw SemanticPlainTextValidationError.protectedToken(type)
             }
         }
-        guard wordOverlapRatio(sourceCore, responseCore) >= policy.minimumWordOverlapRatio else {
+        guard !policy.enforceWordOverlap
+                || wordOverlapRatio(sourceCore, responseCore) >= policy.minimumWordOverlapRatio else {
             throw SemanticPlainTextValidationError.meaningOverlap
         }
 
+        if policy.preserveResponseWhitespace {
+            return response
+        }
         if policy.preserveBoundaryWhitespace {
             return sourceParts.leading + responseCore + sourceParts.trailing
         }
@@ -149,6 +199,55 @@ public extension SemanticPromptContract {
         let inspected = value.lowercased()
         let sourceInspected = source.lowercased()
         return signals.contains { inspected.hasSuffix($0) && !sourceInspected.hasSuffix($0) }
+    }
+
+    private static func repeatsCompleteSource(
+        _ source: String,
+        response: String,
+        minimumEmbeddedCharacters: Int
+    ) -> Bool {
+        let normalizedSource = normalizedRepetitionText(source)
+        let normalizedResponse = normalizedRepetitionText(response)
+        guard !normalizedSource.isEmpty else { return false }
+        if normalizedResponse == normalizedSource { return true }
+        guard normalizedSource.unicodeScalars.count >= minimumEmbeddedCharacters else { return false }
+        return containsAtWordBoundaries(normalizedResponse, source: normalizedSource)
+    }
+
+    private static func normalizedRepetitionText(_ value: String) -> String {
+        value
+            .precomposedStringWithCompatibilityMapping
+            .lowercased()
+            .replacingOccurrences(
+                of: #"[\x{0009}-\x{000D}\x{0020}]+"#,
+                with: " ",
+                options: .regularExpression
+            )
+            .trimmingCharacters(in: CharacterSet(charactersIn: " \t\n\r\u{000B}\u{000C}"))
+    }
+
+    private static func containsAtWordBoundaries(_ response: String, source: String) -> Bool {
+        let responseScalars = Array(response.unicodeScalars)
+        let sourceScalars = Array(source.unicodeScalars)
+        guard !sourceScalars.isEmpty, sourceScalars.count <= responseScalars.count else { return false }
+        for start in 0...(responseScalars.count - sourceScalars.count) {
+            guard sourceScalars.indices.allSatisfy({ offset in
+                responseScalars[start + offset] == sourceScalars[offset]
+            }) else { continue }
+            let end = start + sourceScalars.count
+            let leftBoundary = !isWordScalar(sourceScalars[0])
+                || start == 0
+                || !isWordScalar(responseScalars[start - 1])
+            let rightBoundary = !isWordScalar(sourceScalars[sourceScalars.count - 1])
+                || end == responseScalars.count
+                || !isWordScalar(responseScalars[end])
+            if leftBoundary && rightBoundary { return true }
+        }
+        return false
+    }
+
+    private static func isWordScalar(_ scalar: Unicode.Scalar) -> Bool {
+        CharacterSet.alphanumerics.contains(scalar) || CharacterSet.nonBaseCharacters.contains(scalar)
     }
 
     private static func protectedTokens(in value: String, type: String) -> [String] {

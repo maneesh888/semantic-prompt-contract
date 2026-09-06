@@ -10,7 +10,10 @@ const manifest = readJSON('contracts/manifest.json');
 const writing = readJSON('contracts/writing-actions.json');
 const suggestions = readJSON('contracts/keyboard-suggestions.json');
 const equivalence = readJSON('fixtures/rendering/equivalence.json');
-const plainTextValidationFixtures = readJSON('fixtures/plain-text-validation/rewrite-replacements.json');
+const plainTextValidationFixtures = [
+  ...readJSON('fixtures/plain-text-validation/rewrite-replacements.json'),
+  ...readJSON('fixtures/plain-text-validation/writing-actions.json'),
+];
 const gatewayPresets = gatewayPromptPresets();
 
 function swift(value) {
@@ -42,7 +45,7 @@ function ruleExpression(rule) {
 
 function plainTextValidationCode(policy) {
   if (policy === null) return 'nil';
-  return `SemanticPlainTextValidationPolicy(mode: ${swift(policy.mode)}, rejectUnchanged: ${policy.reject_unchanged}, preserveBoundaryWhitespace: ${policy.preserve_boundary_whitespace}, preserveLineBreaks: ${policy.preserve_line_breaks}, rejectNewMarkdownFences: ${policy.reject_new_markdown_fences}, rejectCommentary: ${policy.reject_commentary}, rejectRawErrorText: ${policy.reject_raw_error_text}, rejectSourceFragment: ${policy.reject_source_fragment}, minimumLengthRatio: ${policy.minimum_length_ratio}, maximumLengthRatio: ${policy.maximum_length_ratio}, maximumAddedCharacters: ${policy.maximum_added_characters}, minimumWordOverlapRatio: ${policy.minimum_word_overlap_ratio}, protectedTokenTypes: [${policy.protected_token_types.map(swift).join(', ')}])`;
+  return `SemanticPlainTextValidationPolicy(mode: ${swift(policy.mode)}, rejectUnchanged: ${policy.reject_unchanged}, preserveBoundaryWhitespace: ${policy.preserve_boundary_whitespace}, preserveLineBreaks: ${policy.preserve_line_breaks}, rejectNewMarkdownFences: ${policy.reject_new_markdown_fences}, rejectCommentary: ${policy.reject_commentary}, rejectRawErrorText: ${policy.reject_raw_error_text}, rejectSourceFragment: ${policy.reject_source_fragment}, rejectJSONContainers: ${policy.reject_json_containers}, rejectTruncationMarkers: ${policy.reject_truncation_markers}, rejectSourceRepetition: ${policy.reject_source_repetition}, minimumEmbeddedSourceRepetitionCharacters: ${policy.minimum_embedded_source_repetition_characters}, preserveResponseWhitespace: ${policy.preserve_response_whitespace}, enforceLengthRatio: ${policy.enforce_length_ratio}, enforceMaximumAddedCharacters: ${policy.enforce_maximum_added_characters}, enforceWordOverlap: ${policy.enforce_word_overlap}, allowUnchangedBelowSourceCharacters: ${policy.allow_unchanged_below_source_characters}, minimumLengthRatio: ${policy.minimum_length_ratio}, maximumLengthRatio: ${policy.maximum_length_ratio}, maximumAddedCharacters: ${policy.maximum_added_characters}, maximumOutputCharacters: ${policy.maximum_output_characters}, minimumWordOverlapRatio: ${policy.minimum_word_overlap_ratio}, protectedTokenTypes: [${policy.protected_token_types.map(swift).join(', ')}], requiresTargetLanguageValidation: ${policy.requires_target_language_validation})`;
 }
 
 const cases = writing.operations.map((operation) => {
@@ -51,7 +54,7 @@ const cases = writing.operations.map((operation) => {
   const renderedMetadata = render({ operationId: operation.id, input: '' });
   const systemInstruction = swift(renderedMetadata.messages[0].content);
   const userMessageMode = swift(operation.user_message_mode ?? 'template');
-  const responseFormat = (operation.response_format ?? writing.response.format) === 'json_object' ? swift('json_object') : 'nil';
+  const responseFormat = operation.response_format === 'json_object' ? swift('json_object') : 'nil';
   const validation = plainTextValidationCode(renderedMetadata.plainTextValidation);
   const temperature = Object.hasOwn(operation, 'temperature')
     ? (operation.temperature === null ? 'nil' : String(operation.temperature))
@@ -96,11 +99,22 @@ public struct SemanticPlainTextValidationPolicy: Equatable, Sendable {
     public let rejectCommentary: Bool
     public let rejectRawErrorText: Bool
     public let rejectSourceFragment: Bool
+    public let rejectJSONContainers: Bool
+    public let rejectTruncationMarkers: Bool
+    public let rejectSourceRepetition: Bool
+    public let minimumEmbeddedSourceRepetitionCharacters: Int
+    public let preserveResponseWhitespace: Bool
+    public let enforceLengthRatio: Bool
+    public let enforceMaximumAddedCharacters: Bool
+    public let enforceWordOverlap: Bool
+    public let allowUnchangedBelowSourceCharacters: Int
     public let minimumLengthRatio: Double
     public let maximumLengthRatio: Double
     public let maximumAddedCharacters: Int
+    public let maximumOutputCharacters: Int
     public let minimumWordOverlapRatio: Double
     public let protectedTokenTypes: [String]
+    public let requiresTargetLanguageValidation: Bool
 }
 
 public struct SemanticGatewayPromptPreset: Equatable, Sendable {
@@ -116,7 +130,6 @@ public struct SemanticGatewayPromptPreset: Equatable, Sendable {
 public enum SemanticGatewayPromptValidationError: Error, Equatable {
     case unknownPreset(String)
     case invalidResponse
-    case unexpectedOperation(expected: String, actual: String)
 }
 
 public enum SemanticPromptContract {
@@ -188,73 +201,16 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
         }
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw SemanticGatewayPromptValidationError.invalidResponse }
-        guard preset.rendering.responseFormatType != nil else {
-            guard preset.rendering.plainTextValidationPolicy != nil else { return content }
-            return try validatePlainTextResponse(content, operationID: preset.rendering.operationID, source: preset.input)
-        }
-        guard let data = trimmed.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data),
-              let response = object as? [String: Any],
-              let operation = nonEmptyString(response["operation"]),
-              let expectedOperation = preset.rendering.wireOperationID,
-              let rawResults = response["results"] as? [Any] else {
-            throw SemanticGatewayPromptValidationError.invalidResponse
-        }
-        guard operation == expectedOperation else {
-            throw SemanticGatewayPromptValidationError.unexpectedOperation(expected: expectedOperation, actual: operation)
-        }
-        if response.keys.contains("summary"), response["summary"] as? String == nil {
-            throw SemanticGatewayPromptValidationError.invalidResponse
-        }
-        if response.keys.contains("corrected_text"), response["corrected_text"] as? String == nil {
-            throw SemanticGatewayPromptValidationError.invalidResponse
-        }
-
-        var matchingOutput: String?
-        for rawResult in rawResults {
-            guard let result = rawResult as? [String: Any],
-                  nonEmptyString(result["id"]) != nil,
-                  let type = nonEmptyString(result["type"]),
-                  Self.writingResultTypes.contains(type),
-                  nonEmptyString(result["title"]) != nil,
-                  result["text"] is String else {
-                throw SemanticGatewayPromptValidationError.invalidResponse
-            }
-            if let range = result["range"] {
-                guard let offsets = range as? [String: Any],
-                      let start = offsets["start"] as? Int, start >= 0,
-                      let end = offsets["end"] as? Int, end >= 0,
-                      offsets.keys.allSatisfy({ $0 == "start" || $0 == "end" }) else {
-                    throw SemanticGatewayPromptValidationError.invalidResponse
-                }
-            }
-            if let confidence = result["confidence"] as? Double, !(0...1).contains(confidence) {
-                throw SemanticGatewayPromptValidationError.invalidResponse
-            }
-            if preset.resultTypes.contains(type), matchingOutput == nil {
-                matchingOutput = nonEmptyString(result["replacement"]) ?? nonEmptyString(result["text"])
-            }
-        }
-
-        guard let matchingOutput else {
-            throw SemanticGatewayPromptValidationError.invalidResponse
-        }
-        let output = nonEmptyString(response["corrected_text"]) ?? matchingOutput
-        guard
-              output.trimmingCharacters(in: .whitespacesAndNewlines) != preset.input.trimmingCharacters(in: .whitespacesAndNewlines) else {
-            throw SemanticGatewayPromptValidationError.invalidResponse
-        }
-        return output
+        guard preset.rendering.plainTextValidationPolicy != nil else { return content }
+        return try validatePlainTextResponse(content, rendering: preset.rendering, source: preset.input)
     }
 
     private static func renderWriting(operationID: String, wireOperationID: String, input: String, parameters: [String: String], systemInstruction: String, userMessageMode: String, responseFormatType: String?, temperature: Double?, plainTextValidationPolicy: SemanticPlainTextValidationPolicy?, rules: [String], maxTokens: Int) -> SemanticPromptRendering {
         let numberedRules = rules.enumerated().map {
             substitute(writingRuleLineTemplate, values: ["index": String($0.offset + 1), "rule": $0.element])
         }.joined(separator: "\\n")
-        let responseExample = ${swift(writing.response.top_level_example)}.replacingOccurrences(of: "{{operation}}", with: wireOperationID)
         let user = userMessageMode == "raw_input" ? input : substitute(writingUserMessageTemplate, values: [
                 "operation": wireOperationID,
-                "response_example": responseExample,
                 "numbered_rules": numberedRules,
                 "input_json": jsonStringLiteral(input),
                 "parameters_json": jsonStringDictionaryLiteral(parameters)
@@ -351,12 +307,6 @@ ${suggestions.operations[0].rules.map((rule) => `            ${swift(rule)}`).jo
         }
     }
 
-    private static let writingResultTypes: Set<String> = ["correction", "suggestion", "summary", "translation", "warning", "explanation"]
-
-    private static func nonEmptyString(_ value: Any?) -> String? {
-        let trimmed = (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty ? nil : trimmed
-    }
 }
 `;
 

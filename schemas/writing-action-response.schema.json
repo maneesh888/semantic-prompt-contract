@@ -1,6 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://semantic-prompt-contract.local/schemas/writing-action-response.schema.json",
+  "$comment": "Deprecated: retained at its stable path and unchanged response shape for semantic-prompt-contract 4.x compatibility. No 5.x writing rendering or preset references this schema.",
+  "title": "Legacy writing-action response envelope (4.x compatibility only)",
+  "description": "Deprecated compatibility schema for consumers that still decode semantic-prompt-contract 4.x writing-action envelopes. Version 5 writing operations return plain text and do not reference this schema.",
+  "deprecated": true,
   "type": "object",
   "additionalProperties": true,
   "required": ["operation", "results"],

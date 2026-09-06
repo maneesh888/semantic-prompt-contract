@@ -3,7 +3,7 @@
   "$id": "https://semantic-prompt-contract.local/schemas/contract.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schema_version", "contract_version", "id", "description", "system_instruction", "user_message_template", "rule_line_template", "input", "response", "operations"],
+  "required": ["$schema", "schema_version", "contract_version", "id", "description", "system_instruction", "user_message_template", "rule_line_template", "input", "operations"],
   "properties": {
     "$schema": {"type": "string"},
     "schema_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
@@ -28,14 +28,25 @@
           "reject_commentary",
           "reject_raw_error_text",
           "reject_source_fragment",
+          "reject_json_containers",
+          "reject_truncation_markers",
+          "reject_source_repetition",
+          "minimum_embedded_source_repetition_characters",
+          "preserve_response_whitespace",
+          "enforce_length_ratio",
+          "enforce_maximum_added_characters",
+          "enforce_word_overlap",
+          "allow_unchanged_below_source_characters",
           "minimum_length_ratio",
           "maximum_length_ratio",
           "maximum_added_characters",
+          "maximum_output_characters",
           "minimum_word_overlap_ratio",
-          "protected_token_types"
+          "protected_token_types",
+          "requires_target_language_validation"
         ],
         "properties": {
-          "mode": {"const": "complete_replacement"},
+          "mode": {"enum": ["complete_replacement", "summary", "translation", "continuation"]},
           "reject_unchanged": {"type": "boolean"},
           "preserve_boundary_whitespace": {"type": "boolean"},
           "preserve_line_breaks": {"type": "boolean"},
@@ -43,9 +54,19 @@
           "reject_commentary": {"type": "boolean"},
           "reject_raw_error_text": {"type": "boolean"},
           "reject_source_fragment": {"type": "boolean"},
+          "reject_json_containers": {"type": "boolean"},
+          "reject_truncation_markers": {"type": "boolean"},
+          "reject_source_repetition": {"type": "boolean"},
+          "minimum_embedded_source_repetition_characters": {"type": "integer", "minimum": 4},
+          "preserve_response_whitespace": {"type": "boolean"},
+          "enforce_length_ratio": {"type": "boolean"},
+          "enforce_maximum_added_characters": {"type": "boolean"},
+          "enforce_word_overlap": {"type": "boolean"},
+          "allow_unchanged_below_source_characters": {"type": "integer", "minimum": 0},
           "minimum_length_ratio": {"type": "number", "minimum": 0, "maximum": 1},
           "maximum_length_ratio": {"type": "number", "minimum": 1},
           "maximum_added_characters": {"type": "integer", "minimum": 0},
+          "maximum_output_characters": {"type": "integer", "minimum": 1},
           "minimum_word_overlap_ratio": {"type": "number", "minimum": 0, "maximum": 1},
           "protected_token_types": {
             "type": "array",
@@ -53,8 +74,37 @@
             "items": {
               "enum": ["number", "url", "email", "mention", "hashtag", "emoji", "markdown_link_destination"]
             }
+          },
+          "requires_target_language_validation": {"type": "boolean"}
+        },
+        "allOf": [
+          {
+            "not": {
+              "properties": {
+                "preserve_boundary_whitespace": {"const": true},
+                "preserve_response_whitespace": {"const": true}
+              },
+              "required": ["preserve_boundary_whitespace", "preserve_response_whitespace"]
+            }
+          },
+          {
+            "if": {"properties": {"mode": {"const": "translation"}}, "required": ["mode"]},
+            "then": {
+              "properties": {"requires_target_language_validation": {"const": true}},
+              "required": ["requires_target_language_validation"]
+            }
+          },
+          {
+            "if": {"properties": {"mode": {"const": "continuation"}}, "required": ["mode"]},
+            "then": {
+              "properties": {
+                "preserve_response_whitespace": {"const": true},
+                "reject_source_repetition": {"const": true}
+              },
+              "required": ["preserve_response_whitespace", "reject_source_repetition"]
+            }
           }
-        }
+        ]
       }
     },
     "user_message_template": {"type": "string", "minLength": 1},

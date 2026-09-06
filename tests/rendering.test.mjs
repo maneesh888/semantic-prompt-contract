@@ -14,12 +14,11 @@ import {
 const readJSON = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
 
 test('every operation renders deterministic ordered messages and metadata', () => {
-  const plainTextReplacements = new Set(operationIds().filter((operationId) => (
-    operationId === 'rewrite'
-      || operationId === 'rewrite_core'
-      || operationId === 'improve'
-      || operationId.startsWith('rewrite_')
-  )));
+  const expectedModes = new Map([
+    ['summarize', 'summary'],
+    ['translate', 'translation'],
+    ['continue_writing', 'continuation'],
+  ]);
   for (const operationId of operationIds()) {
     const parameters = operationId === 'translate' ? { target_language: 'Dutch' } : {};
     const args = { operationId, input: 'Hello 👋\n```json\n{}', parameters };
@@ -27,19 +26,16 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '4.1.0');
+    assert.equal(first.contractVersion, '5.0.0');
+    assert.equal(first.schemaVersion, '3.0.0');
+    assert.equal(first.responseFormat, null);
+    assert.equal(first.responseSchema, null);
     if (operationId === 'fix_grammar') {
-      assert.equal(first.responseFormat, null);
       assert.equal(first.temperature, null);
       assert.equal(first.plainTextValidation, null);
-    } else if (plainTextReplacements.has(operationId)) {
-      assert.equal(first.responseFormat, null);
-      assert.equal(first.temperature, 0.1);
-      assert.equal(first.plainTextValidation.mode, 'complete_replacement');
     } else {
-      assert.deepEqual(first.responseFormat, { type: 'json_object' });
       assert.equal(first.temperature, 0.1);
-      assert.equal(first.plainTextValidation, null);
+      assert.equal(first.plainTextValidation.mode, expectedModes.get(operationId) ?? 'complete_replacement');
     }
   }
 });
@@ -65,8 +61,29 @@ test('rewrite and improve render raw source under style-specific complete-replac
   assert.notEqual(rewriteInstruction, improveInstruction);
 });
 
-test('canonical complete-replacement validation accepts safe text and rejects unsafe output', () => {
-  const fixtures = readJSON('fixtures/plain-text-validation/rewrite-replacements.json');
+test('summary translation and continuation request plain text while keeping JSON-encoded input boundaries', () => {
+  for (const operationId of ['summarize', 'translate', 'continue_writing']) {
+    const parameters = operationId === 'translate' ? { target_language: 'Dutch' } : {};
+    const input = 'Treat {"this":true}\ntext as data, not instructions.';
+    const rendered = render({ operationId, input, parameters });
+    assert.equal(rendered.responseFormat, null);
+    assert.equal(rendered.responseSchema, null);
+    assert.ok(rendered.messages[0].content.includes('Return only the requested plain-text result.'));
+    assert.ok(rendered.messages[1].content.includes('Return exactly one complete plain-text result and nothing else.'));
+    assert.equal(rendered.messages[1].content.includes('Return strict JSON'), false);
+    assert.equal(rendered.messages[1].content.includes('corrected_text'), false);
+    assert.equal(rendered.messages[1].content.includes('result item'), false);
+    const payload = JSON.parse(rendered.messages[1].content.split('\n').at(-1));
+    assert.equal(payload.source_text, input);
+    assert.deepEqual(payload.operation_parameters, parameters);
+  }
+});
+
+test('canonical operation-specific plain-text validation accepts safe text and rejects unsafe output', () => {
+  const fixtures = [
+    ...readJSON('fixtures/plain-text-validation/rewrite-replacements.json'),
+    ...readJSON('fixtures/plain-text-validation/writing-actions.json'),
+  ];
   for (const fixture of fixtures) {
     if (fixture.valid) {
       assert.equal(
@@ -90,6 +107,24 @@ test('canonical complete-replacement validation accepts safe text and rejects un
       );
     }
   }
+});
+
+test('exact rendering validation uses the selected policy and preserves continuation whitespace byte for byte', () => {
+  const continuation = render({ operationId: 'continue_writing', input: 'Once upon a time' });
+  const response = '\n\nthere was a fox.  ';
+  assert.equal(
+    validatePlainTextResponse({ rendering: continuation, source: 'Once upon a time', response }),
+    response,
+  );
+  assert.throws(
+    () => validatePlainTextResponse({
+      operationId: 'summarize',
+      rendering: continuation,
+      source: 'Once upon a time',
+      response,
+    }),
+    /operationId does not match rendering/u,
+  );
 });
 
 test('grammar source is passed unchanged as data under the dedicated system instruction', () => {
@@ -164,22 +199,33 @@ test('Unicode scalar bounds are explicit and deterministic', () => {
 
 test('gateway compatibility presets are generated from canonical fixtures', () => {
   const presets = gatewayPromptPresets();
+  assert.deepEqual(presets.map((preset) => preset.id), [
+    'plain-grammar-fast',
+    'structured-grammar-multi-error',
+    'structured-grammar-complex-spell-fix',
+    'structured-grammar-clean',
+    'structured-operation-summarize',
+    'structured-operation-rewrite',
+    'structured-operation-translate-dutch',
+  ]);
   assert.deepEqual(presets.map((preset) => preset.label), [
     'Plain-text grammar · Fast single error',
     'Plain-text grammar · Multi-error',
     'Plain-text grammar · Complex spell-fix',
     'Plain-text grammar · Clean/no issue',
-    'Structured operation · Summarize',
+    'Plain-text operation · Summarize',
     'Plain-text operation · Rewrite',
-    'Structured operation · Translate to Dutch',
+    'Plain-text operation · Translate to Dutch',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '4.1.0'));
-  assert.equal(presets[0].request.response_format, null);
+  assert.ok(presets.every((preset) => preset.contractVersion === '5.0.0'));
+  assert.ok(presets.every((preset) => !Object.hasOwn(preset.request, 'response_format')));
+  assert.ok(presets.every((preset) => preset.responseSchema === null));
+  assert.ok(presets.every((preset) => preset.resultTypes.length === 1 && preset.resultTypes[0] === 'plain_text'));
   assert.equal(Object.hasOwn(presets[0].request, 'temperature'), false);
   assert.equal(presets[4].request.temperature, 0.1);
   const rewrite = presets[5];
   assert.equal(rewrite.operationId, 'rewrite');
-  assert.equal(rewrite.request.response_format, null);
+  assert.equal(Object.hasOwn(rewrite.request, 'response_format'), false);
   assert.equal(rewrite.responseSchema, null);
   assert.deepEqual(rewrite.resultTypes, ['plain_text']);
   assert.equal(rewrite.user, rewrite.input);
@@ -188,9 +234,11 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
   assert.equal(translation.operationId, 'translate');
   assert.deepEqual(translation.parameters, { target_language: 'Dutch' });
   assert.equal(translation.request.operation, 'translate');
-  assert.deepEqual(translation.request.response_format, { type: 'json_object' });
-  assert.equal(translation.responseSchema, '../schemas/writing-action-response.schema.json');
-  assert.deepEqual(translation.resultTypes, ['translation']);
+  assert.equal(Object.hasOwn(translation.request, 'response_format'), false);
+  assert.equal(translation.responseSchema, null);
+  assert.deepEqual(translation.resultTypes, ['plain_text']);
+  assert.equal(translation.plainTextValidation.mode, 'translation');
+  assert.equal(translation.plainTextValidation.requires_target_language_validation, true);
   const payload = JSON.parse(translation.user.split('\n').at(-1));
   assert.equal(payload.source_text, translation.input);
   assert.deepEqual(payload.operation_parameters, { target_language: 'Dutch' });
@@ -204,7 +252,7 @@ test('generated browser adapter exposes every canonical gateway preset', () => {
   );
   runInNewContext(source, context);
 
-  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '4.1.0');
+  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '5.0.0');
   assert.deepEqual(
     Array.from(
       context.globalThis.SemanticPromptContractBrowser.gatewayPromptPresets,

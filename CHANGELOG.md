@@ -1,5 +1,21 @@
 # Changelog
 
+## 5.0.0
+
+- Change Summarize, Translate, and Continue Writing from the legacy JSON result envelope to one plain-text response, so all built-in writing actions now omit transport `response_format` and active response-schema metadata.
+- Keep source text and validated operation parameters JSON-encoded inside template-mode user messages for Summarize, Translate, and Continue Writing; this input trust boundary does not request structured output.
+- Add distinct summary, translation, and continuation validation modes alongside complete-replacement validation. Reject JSON-shaped output, newly introduced Markdown fence sequences anywhere, generic result wrappers, raw errors, explicit truncation markers, unsafe protected-token loss, and complete-source repetition where applicable.
+- Allow unchanged summaries only for already-short sources, preserve source boundary whitespace for complete replacements/summary/translation, compare ordered newline-run structure and emoji extended grapheme clusters consistently across JavaScript and Swift, and preserve accepted continuation response whitespace exactly.
+- Detect continuation source repetition after compatibility normalization, case folding, and whitespace normalization. Embedded matching begins at four Unicode scalars to avoid pathological one-to-three-scalar false positives; an exact duplicate remains invalid at any length.
+- Mark translation policies as requiring caller-owned target-language validation; the contract's structural validator deliberately does not pretend to prove language or translation quality.
+- Preserve every gateway preset identifier while updating structured-operation labels and fixtures to plain text. All writing presets now use `plain_text` result metadata and omit response-format/schema request metadata.
+- Retain `schemas/writing-action-response.schema.json` at the same path and response shape with explicit deprecation annotations for 4.x compatibility. Move its examples under `fixtures/legacy/` and prove that no active manifest, writing contract, preset, or generated adapter references it.
+- Remove the generated Swift legacy-envelope gateway parser, add an exact-rendering validation overload, regenerate Swift/browser adapters and parity fixtures, and advance the canonical schema to `3.0.0` for the required validation-policy shape.
+- Keep Grammar on its existing specialized consumer validation/diffing path rather than adding a package structural-validation profile.
+- Leave the independently defined keyboard-suggestions prompt and response schema unchanged apart from package version metadata.
+
+This is a major release because the observable request and response shapes for Summarize, Translate, and Continue Writing change from a JSON envelope to plain text.
+
 ## 4.1.0
 
 - Add the contract-owned fast, single-error plain-text grammar gateway preset from the maintained 3.x line.
