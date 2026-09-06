@@ -32,6 +32,14 @@
     "expected": "The planned release starts at 09:00 on the agreed timeline."
   },
   {
+    "id": "rewrite-allows-source-preserved-inline-fences",
+    "operation_id": "rewrite",
+    "source": "Use ```inline``` code in the note.",
+    "response": "Please use ```inline``` code in the note.",
+    "valid": true,
+    "expected": "Please use ```inline``` code in the note."
+  },
+  {
     "id": "reject-empty",
     "operation_id": "improve",
     "source": "This update should be clearer.",

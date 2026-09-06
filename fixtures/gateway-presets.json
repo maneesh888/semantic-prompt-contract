@@ -33,10 +33,10 @@
   },
   {
     "id": "structured-operation-summarize",
-    "label": "Structured operation · Summarize",
+    "label": "Plain-text operation · Summarize",
     "pack_id": "writing-actions",
     "operation_id": "summarize",
-    "input": "The keyboard extension reads the gateway URL, API key, and selected model from the same shared configuration as the host app. It sends structured requests through the gateway and parses the returned JSON for the keyboard UI.",
+    "input": "The keyboard extension reads the gateway URL, API key, and selected model from the same shared configuration as the host app. It sends writing requests through the gateway and presents the validated result in the keyboard UI.",
     "parameters": {}
   },
   {
@@ -49,7 +49,7 @@
   },
   {
     "id": "structured-operation-translate-dutch",
-    "label": "Structured operation · Translate to Dutch",
+    "label": "Plain-text operation · Translate to Dutch",
     "pack_id": "writing-actions",
     "operation_id": "translate",
     "input": "The gateway connection is ready for writing actions.",

@@ -1,0 +1,346 @@
+[
+  {
+    "id": "summary-accepts-concise-result-and-preserves-source-boundary-whitespace",
+    "operation_id": "summarize",
+    "source": "  The team approved the release on Friday after the final accessibility review.  ",
+    "response": "The team approved Friday's release after accessibility review.",
+    "valid": true,
+    "expected": "  The team approved Friday's release after accessibility review.  "
+  },
+  {
+    "id": "summary-allows-unchanged-already-short-source",
+    "operation_id": "summarize",
+    "source": "  Launch moved to Friday.  ",
+    "response": "Launch moved to Friday.",
+    "valid": true,
+    "expected": "  Launch moved to Friday.  "
+  },
+  {
+    "id": "summary-rejects-unchanged-long-source",
+    "operation_id": "summarize",
+    "source": "The release review covered accessibility, localization, security, performance, and support readiness. Every workstream supplied evidence, the owners resolved all blocking findings, and the team approved the Friday rollout.",
+    "response": "The release review covered accessibility, localization, security, performance, and support readiness. Every workstream supplied evidence, the owners resolved all blocking findings, and the team approved the Friday rollout.",
+    "valid": false,
+    "expected_error": "unchanged"
+  },
+  {
+    "id": "summary-rejects-json-object",
+    "operation_id": "summarize",
+    "source": "The meeting moved to Friday.",
+    "response": "{\"summary\":\"The meeting moved to Friday.\"}",
+    "valid": false,
+    "expected_error": "json_container"
+  },
+  {
+    "id": "summary-rejects-empty-output",
+    "operation_id": "summarize",
+    "source": "The meeting moved to Friday.",
+    "response": "  \n",
+    "valid": false,
+    "expected_error": "empty"
+  },
+  {
+    "id": "summary-rejects-malformed-json-shaped-output",
+    "operation_id": "summarize",
+    "source": "The meeting moved to Friday.",
+    "response": "{\"summary\":\"The meeting moved to Friday.\"",
+    "valid": false,
+    "expected_error": "json_container"
+  },
+  {
+    "id": "summary-rejects-commentary-label",
+    "operation_id": "summarize",
+    "source": "The meeting moved to Friday.",
+    "response": "Summary: The meeting moved to Friday.",
+    "valid": false,
+    "expected_error": "commentary"
+  },
+  {
+    "id": "summary-rejects-markdown-fence",
+    "operation_id": "summarize",
+    "source": "The meeting moved to Friday.",
+    "response": "```\nThe meeting moved to Friday.\n```",
+    "valid": false,
+    "expected_error": "markdown_fence"
+  },
+  {
+    "id": "summary-rejects-inline-markdown-fence",
+    "operation_id": "summarize",
+    "source": "The release passed review.",
+    "response": "The release ```passed``` review.",
+    "valid": false,
+    "expected_error": "markdown_fence"
+  },
+  {
+    "id": "summary-rejects-generic-result-wrapper",
+    "operation_id": "summarize",
+    "source": "The release passed review.",
+    "response": "Result:\n{\"summary\":\"The release passed review.\"}",
+    "valid": false,
+    "expected_error": "commentary"
+  },
+  {
+    "id": "summary-rejects-response-json-wrapper",
+    "operation_id": "summarize",
+    "source": "The release passed review.",
+    "response": "Response:\n{\"summary\":\"The release passed review.\"}",
+    "valid": false,
+    "expected_error": "commentary"
+  },
+  {
+    "id": "summary-rejects-output-error-wrapper",
+    "operation_id": "summarize",
+    "source": "The release passed review.",
+    "response": "Output: Service unavailable: upstream request failed.",
+    "valid": false,
+    "expected_error": "commentary"
+  },
+  {
+    "id": "summary-rejects-answer-wrapper",
+    "operation_id": "summarize",
+    "source": "The release passed review.",
+    "response": "Answer: The release passed review.",
+    "valid": false,
+    "expected_error": "commentary"
+  },
+  {
+    "id": "summary-rejects-raw-error",
+    "operation_id": "summarize",
+    "source": "The meeting moved to Friday.",
+    "response": "Service unavailable: upstream request failed.",
+    "valid": false,
+    "expected_error": "raw_error"
+  },
+  {
+    "id": "summary-rejects-explicit-truncation-marker",
+    "operation_id": "summarize",
+    "source": "The meeting moved to Friday after the organizer confirmed the room.",
+    "response": "The meeting moved to Friday [truncated]",
+    "valid": false,
+    "expected_error": "truncated"
+  },
+  {
+    "id": "translation-preserves-boundary-whitespace-paragraphs-and-protected-tokens",
+    "operation_id": "translate",
+    "source": "  Contact jane@example.com at 10:30 🙂.\n\nRead [the plan](https://example.com/plan).  ",
+    "response": "Neem om 10:30 contact op met jane@example.com 🙂.\n\nLees [het plan](https://example.com/plan).",
+    "valid": true,
+    "expected": "  Neem om 10:30 contact op met jane@example.com 🙂.\n\nLees [het plan](https://example.com/plan).  "
+  },
+  {
+    "id": "translation-allows-unchanged-target-language-text-for-caller-check",
+    "operation_id": "translate",
+    "source": "  Amsterdam  ",
+    "response": "Amsterdam",
+    "valid": true,
+    "expected": "  Amsterdam  "
+  },
+  {
+    "id": "translation-preserves-family-and-skin-tone-graphemes",
+    "operation_id": "translate",
+    "source": "Family 👨‍👩‍👧‍👦 greets 👍🏽 at 10:30.",
+    "response": "Familie 👨‍👩‍👧‍👦 begroet 👍🏽 om 10:30.",
+    "valid": true,
+    "expected": "Familie 👨‍👩‍👧‍👦 begroet 👍🏽 om 10:30."
+  },
+  {
+    "id": "translation-rejects-changed-family-grapheme",
+    "operation_id": "translate",
+    "source": "Family 👨‍👩‍👧‍👦 greets at 10:30.",
+    "response": "Familie 👨‍👩‍👧 begroet om 10:30.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "translation-rejects-changed-skin-tone-grapheme",
+    "operation_id": "translate",
+    "source": "The team approves 👍🏽 at 10:30.",
+    "response": "Het team keurt 👍🏻 goed om 10:30.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "translation-rejects-json-array",
+    "operation_id": "translate",
+    "source": "Good morning.",
+    "response": "[\"Goedemorgen.\"]",
+    "valid": false,
+    "expected_error": "json_container"
+  },
+  {
+    "id": "translation-rejects-empty-output",
+    "operation_id": "translate",
+    "source": "Good morning.",
+    "response": "\t \n",
+    "valid": false,
+    "expected_error": "empty"
+  },
+  {
+    "id": "translation-rejects-commentary-label",
+    "operation_id": "translate",
+    "source": "Good morning.",
+    "response": "Translation: Goedemorgen.",
+    "valid": false,
+    "expected_error": "commentary"
+  },
+  {
+    "id": "translation-rejects-markdown-fence",
+    "operation_id": "translate",
+    "source": "Good morning.",
+    "response": "```\nGoedemorgen.\n```",
+    "valid": false,
+    "expected_error": "markdown_fence"
+  },
+  {
+    "id": "translation-rejects-raw-error",
+    "operation_id": "translate",
+    "source": "Good morning.",
+    "response": "Unable to translate because the model timed out.",
+    "valid": false,
+    "expected_error": "raw_error"
+  },
+  {
+    "id": "translation-rejects-lost-paragraph-boundary",
+    "operation_id": "translate",
+    "source": "Good morning.\n\nSee you Friday.",
+    "response": "Goedemorgen. Ik zie je vrijdag.",
+    "valid": false,
+    "expected_error": "line_breaks"
+  },
+  {
+    "id": "translation-rejects-reordered-newline-run-structure",
+    "operation_id": "translate",
+    "source": "First paragraph.\n\nSecond line.\nThird line.",
+    "response": "Eerste alinea.\nTweede regel.\n\nDerde regel.",
+    "valid": false,
+    "expected_error": "line_breaks"
+  },
+  {
+    "id": "translation-rejects-lost-protected-number",
+    "operation_id": "translate",
+    "source": "Meet at 10:30 on Friday.",
+    "response": "Laten we vrijdag afspreken.",
+    "valid": false,
+    "expected_error": "protected_number"
+  },
+  {
+    "id": "translation-rejects-source-fragment",
+    "operation_id": "translate",
+    "source": "Good morning and welcome to the project review.",
+    "response": "Good morning",
+    "valid": false,
+    "expected_error": "source_fragment"
+  },
+  {
+    "id": "translation-rejects-explicit-truncation-marker",
+    "operation_id": "translate",
+    "source": "Good morning and welcome.",
+    "response": "Goedemorgen en welkom. <truncated>",
+    "valid": false,
+    "expected_error": "truncated"
+  },
+  {
+    "id": "continuation-preserves-exact-response-whitespace",
+    "operation_id": "continue_writing",
+    "source": "Once upon a time",
+    "response": " there was a fox.\n",
+    "valid": true,
+    "expected": " there was a fox.\n"
+  },
+  {
+    "id": "continuation-preserves-leading-paragraph-breaks",
+    "operation_id": "continue_writing",
+    "source": "The first section is complete.",
+    "response": "\n\nThe next section explains the rollout.  ",
+    "valid": true,
+    "expected": "\n\nThe next section explains the rollout.  "
+  },
+  {
+    "id": "continuation-rejects-complete-source-prefix",
+    "operation_id": "continue_writing",
+    "source": "Once upon a time",
+    "response": "Once upon a time there was a fox.",
+    "valid": false,
+    "expected_error": "source_repetition"
+  },
+  {
+    "id": "continuation-rejects-normalized-case-insensitive-short-source-repetition",
+    "operation_id": "continue_writing",
+    "source": "Hello!",
+    "response": " Then hello! again, the team continued.",
+    "valid": false,
+    "expected_error": "source_repetition"
+  },
+  {
+    "id": "continuation-rejects-normalized-unicode-and-whitespace-source-repetition",
+    "operation_id": "continue_writing",
+    "source": "Café launch",
+    "response": " Then CAFÉ   LAUNCH continued smoothly.",
+    "valid": false,
+    "expected_error": "source_repetition"
+  },
+  {
+    "id": "continuation-allows-incidental-one-scalar-match",
+    "operation_id": "continue_writing",
+    "source": "I",
+    "response": " I think the next step is clear.",
+    "valid": true,
+    "expected": " I think the next step is clear."
+  },
+  {
+    "id": "continuation-rejects-empty-output",
+    "operation_id": "continue_writing",
+    "source": "Once upon a time",
+    "response": " \n\t",
+    "valid": false,
+    "expected_error": "empty"
+  },
+  {
+    "id": "continuation-rejects-wrapped-complete-source",
+    "operation_id": "continue_writing",
+    "source": "The launch begins Friday.",
+    "response": "New paragraph: The launch begins Friday. Then the team monitors metrics.",
+    "valid": false,
+    "expected_error": "source_repetition"
+  },
+  {
+    "id": "continuation-rejects-json-object",
+    "operation_id": "continue_writing",
+    "source": "Once upon a time",
+    "response": "{\"continuation\":\" there was a fox.\"}",
+    "valid": false,
+    "expected_error": "json_container"
+  },
+  {
+    "id": "continuation-rejects-commentary-label",
+    "operation_id": "continue_writing",
+    "source": "Once upon a time",
+    "response": "Continuation: there was a fox.",
+    "valid": false,
+    "expected_error": "commentary"
+  },
+  {
+    "id": "continuation-rejects-markdown-fence",
+    "operation_id": "continue_writing",
+    "source": "Once upon a time",
+    "response": "```\n there was a fox.\n```",
+    "valid": false,
+    "expected_error": "markdown_fence"
+  },
+  {
+    "id": "continuation-rejects-raw-error",
+    "operation_id": "continue_writing",
+    "source": "Once upon a time",
+    "response": "Request failed: upstream timeout.",
+    "valid": false,
+    "expected_error": "raw_error"
+  },
+  {
+    "id": "continuation-rejects-explicit-truncation-marker",
+    "operation_id": "continue_writing",
+    "source": "Once upon a time",
+    "response": " there was a fox [output truncated]",
+    "valid": false,
+    "expected_error": "truncated"
+  }
+]

@@ -69,7 +69,9 @@ function renderUserMessage(pack, operation, input, parameters) {
   const parametersJson = encodeParameters(values);
   const wireOperation = operation.wire_operation_id;
   values.operation = wireOperation;
-  values.response_example = substitute(pack.response.top_level_example, values);
+  if (pack.response?.top_level_example !== undefined) {
+    values.response_example = substitute(pack.response.top_level_example, values);
+  }
   const rules = operation.rules.map((rule) => substitute(rule, values));
   values.numbered_rules = rules.map((rule, index) => substitute(pack.rule_line_template, {
     index: String(index + 1),
@@ -109,7 +111,7 @@ export function render({ packId = 'writing-actions', operationId, input, paramet
   const operation = pack.operations.find((candidate) => candidate.id === operationId);
   if (!operation) throw new SemanticPromptContractError(`Unknown operation for ${packId}: ${operationId}`);
   const user = renderUserMessage(pack, operation, input, parameters);
-  const responseFormat = operation.response_format ?? pack.response.format;
+  const responseFormat = operation.response_format ?? pack.response?.format ?? null;
   const validation = plainTextValidation(pack, operation);
   return Object.freeze({
     contractVersion: pack.contract_version,
@@ -122,7 +124,7 @@ export function render({ packId = 'writing-actions', operationId, input, paramet
       Object.freeze({ role: 'user', content: user }),
     ]),
     responseFormat: responseFormat === 'json_object' ? Object.freeze({ type: 'json_object' }) : null,
-    responseSchema: responseFormat === 'json_object' ? pack.response.schema : null,
+    responseSchema: responseFormat === 'json_object' ? (pack.response?.schema ?? null) : null,
     maxTokens: operation.max_tokens,
     temperature: Object.hasOwn(operation, 'temperature') ? operation.temperature : 0.1,
     plainTextValidation: validation,
@@ -136,13 +138,18 @@ function coreAndBoundaryWhitespace(value) {
 }
 
 function protectedTokens(value, type) {
+  if (type === 'emoji') {
+    const segmenter = new Intl.Segmenter('en-US', { granularity: 'grapheme' });
+    return [...segmenter.segment(value)]
+      .map(({ segment }) => segment)
+      .filter((segment) => /\p{Emoji_Presentation}/u.test(segment));
+  }
   const patterns = {
     number: /[+-]?\d+(?:[.,:/-]\d+)*/gu,
     url: /https?:\/\/[^\s<>()]+/giu,
     email: /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/giu,
     mention: /@[\p{L}\p{N}_]+/gu,
     hashtag: /#[\p{L}\p{N}_]+/gu,
-    emoji: /\p{Extended_Pictographic}/gu,
     markdown_link_destination: /\]\(([^)]+)\)/gu,
   };
   const pattern = patterns[type];
@@ -159,6 +166,10 @@ function sameMultiset(left, right) {
   const rightCounts = counts(right);
   return leftCounts.size === rightCounts.size
     && [...leftCounts].every(([value, count]) => rightCounts.get(value) === count);
+}
+
+function sameSequence(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function wordOverlapRatio(source, replacement) {
@@ -181,15 +192,78 @@ function endsWithNewSignal(value, source, signals) {
   return signals.some((signal) => inspected.endsWith(signal) && !sourceInspected.endsWith(signal));
 }
 
-export function validatePlainTextResponse({ operationId, source, response }) {
+function isJSONContainer(value) {
+  return value.startsWith('{') || value.startsWith('[');
+}
+
+function hasTruncationMarker(value) {
+  return /(?:^|\s)(?:\[(?:output\s+)?truncated\]|<(?:output\s+)?truncated>|\[incomplete\])$/iu.test(value);
+}
+
+function normalizedRepetitionText(value) {
+  const normalized = value.normalize('NFKC')
+    .toLocaleLowerCase('en-US')
+    .replace(/[\u0009-\u000d\u0020]+/gu, ' ');
+  return trimASCIIWhitespace(normalized);
+}
+
+function isWordScalar(value) {
+  return /[\p{L}\p{M}\p{N}]/u.test(value);
+}
+
+function containsAtWordBoundaries(response, source) {
+  const responseScalars = [...response];
+  const sourceScalars = [...source];
+  const lastStart = responseScalars.length - sourceScalars.length;
+  for (let start = 0; start <= lastStart; start += 1) {
+    if (!sourceScalars.every((scalar, offset) => responseScalars[start + offset] === scalar)) continue;
+    const end = start + sourceScalars.length;
+    const leftBoundary = !isWordScalar(sourceScalars[0])
+      || start === 0
+      || !isWordScalar(responseScalars[start - 1]);
+    const rightBoundary = !isWordScalar(sourceScalars.at(-1))
+      || end === responseScalars.length
+      || !isWordScalar(responseScalars[end]);
+    if (leftBoundary && rightBoundary) return true;
+  }
+  return false;
+}
+
+function repeatsCompleteSource(source, response, minimumEmbeddedCharacters) {
+  const normalizedSource = normalizedRepetitionText(source);
+  const normalizedResponse = normalizedRepetitionText(response);
+  if (normalizedSource.length === 0) return false;
+  if (normalizedResponse === normalizedSource) return true;
+  if ([...normalizedSource].length < minimumEmbeddedCharacters) return false;
+  return containsAtWordBoundaries(normalizedResponse, normalizedSource);
+}
+
+function validationRendering({ rendering, operationId, source, parameters }) {
+  if (rendering !== undefined) {
+    if (rendering === null || typeof rendering !== 'object' || rendering.packId !== 'writing-actions') {
+      throw new SemanticPromptContractError('rendering must be a writing-actions rendering');
+    }
+    if (operationId !== undefined && operationId !== rendering.operationId) {
+      throw new SemanticPromptContractError('operationId does not match rendering');
+    }
+    return rendering;
+  }
+  if (typeof operationId !== 'string') {
+    throw new SemanticPromptContractError('operationId or rendering is required');
+  }
+  return render({ operationId, input: source, parameters });
+}
+
+export function validatePlainTextResponse({ operationId, rendering, source, response, parameters = {} }) {
   if (typeof source !== 'string' || typeof response !== 'string') {
     throw new SemanticPromptContractError('source and response must be strings');
   }
-  const pack = packs.get('writing-actions');
-  const operation = pack.operations.find((candidate) => candidate.id === operationId);
-  if (!operation) throw new SemanticPromptContractError(`Unknown operation for writing-actions: ${operationId}`);
-  const policy = plainTextValidation(pack, operation);
-  if (policy === null) throw new SemanticPromptContractError(`Operation does not own complete-replacement validation: ${operationId}`);
+  const selectedRendering = validationRendering({ rendering, operationId, source, parameters });
+  const selectedOperationId = selectedRendering.operationId;
+  const policy = selectedRendering.plainTextValidation;
+  if (policy === null || policy === undefined) {
+    throw new SemanticPromptContractError(`Operation does not own plain-text validation: ${selectedOperationId}`);
+  }
   if (response.includes('\u0000') || response.includes('\ufffd')) {
     throw new SemanticPromptContractError('invalid_encoding');
   }
@@ -198,13 +272,29 @@ export function validatePlainTextResponse({ operationId, source, response }) {
   const responseParts = coreAndBoundaryWhitespace(response);
   const sourceCore = sourceParts.core;
   const responseCore = responseParts.core;
+  const sourceLength = [...sourceCore].length;
+  const responseLength = [...responseCore].length;
   if (responseCore.length === 0) throw new SemanticPromptContractError('empty');
-  if (policy.reject_unchanged && responseCore === sourceCore) throw new SemanticPromptContractError('unchanged');
+  if (policy.reject_unchanged
+      && responseCore === sourceCore
+      && sourceLength > (policy.allow_unchanged_below_source_characters ?? 0)) {
+    throw new SemanticPromptContractError('unchanged');
+  }
 
-  const commentaryPrefixes = [
+  const commonCommentaryPrefixes = [
     'here is the rewrite:', 'here is the rewritten text:', 'here is the improved text:',
     'rewritten text:', 'improved text:', 'rewrite:', 'sure,', 'certainly,', 'of course,',
     'i rewrote ', 'i have rewritten ', 'i improved ', 'i have improved ',
+    'result:', 'operation result:', 'writing result:', 'response:', 'output:', 'answer:',
+  ];
+  const modeCommentaryPrefixes = {
+    summary: ['here is the summary:', 'summary:', 'summarized text:', 'in summary:'],
+    translation: ['here is the translation:', 'translation:', 'translated text:'],
+    continuation: ['here is the continuation:', 'continuation:', 'continued text:'],
+  };
+  const commentaryPrefixes = [
+    ...commonCommentaryPrefixes,
+    ...(modeCommentaryPrefixes[policy.mode] ?? []),
   ];
   const commentarySuffixes = ['hope this helps.', 'let me know if you need anything else.', 'would you like another version?'];
   if (policy.reject_commentary
@@ -222,37 +312,57 @@ export function validatePlainTextResponse({ operationId, source, response }) {
     throw new SemanticPromptContractError('raw_error');
   }
 
-  const responseStartsFence = responseCore.startsWith('```');
-  const responseEndsFence = responseCore.endsWith('```');
-  const sourceStartsFence = sourceCore.startsWith('```');
-  const sourceEndsFence = sourceCore.endsWith('```');
+  if (policy.reject_json_containers && isJSONContainer(responseCore)) {
+    throw new SemanticPromptContractError('json_container');
+  }
+
+  if (policy.reject_truncation_markers && hasTruncationMarker(responseCore)) {
+    throw new SemanticPromptContractError('truncated');
+  }
+
+  const markdownFenceSequences = (value) => value.match(/`{3,}/gu) ?? [];
   if (policy.reject_new_markdown_fences
-      && ((responseStartsFence && !sourceStartsFence) || (responseEndsFence && !sourceEndsFence))) {
+      && !sameSequence(markdownFenceSequences(sourceCore), markdownFenceSequences(responseCore))) {
     throw new SemanticPromptContractError('markdown_fence');
   }
 
   if (policy.preserve_line_breaks) {
-    const lineBreaks = (value) => value.match(/\r\n|\r|\n/gu) ?? [];
-    if (!sameMultiset(lineBreaks(sourceCore), lineBreaks(responseCore))) {
+    const lineBreakRuns = (value) => value.match(/(?:(?:\r\n|\r|\n))+/gu) ?? [];
+    if (!sameSequence(lineBreakRuns(sourceCore), lineBreakRuns(responseCore))) {
       throw new SemanticPromptContractError('line_breaks');
     }
   }
 
-  const sourceLength = [...sourceCore].length;
-  const responseLength = [...responseCore].length;
-  if (sourceLength >= 20 && responseLength < Math.ceil(sourceLength * policy.minimum_length_ratio)) {
-    throw new SemanticPromptContractError('truncated');
-  }
-  if (sourceLength >= 20 && responseLength > Math.floor(sourceLength * policy.maximum_length_ratio)) {
+  if (policy.maximum_output_characters !== undefined
+      && responseLength > policy.maximum_output_characters) {
     throw new SemanticPromptContractError('unsafe_expansion');
   }
-  if (responseLength - sourceLength > policy.maximum_added_characters) {
+  if (policy.enforce_length_ratio
+      && sourceLength >= 20
+      && responseLength < Math.ceil(sourceLength * policy.minimum_length_ratio)) {
+    throw new SemanticPromptContractError('truncated');
+  }
+  if (policy.enforce_length_ratio
+      && sourceLength >= 20
+      && responseLength > Math.floor(sourceLength * policy.maximum_length_ratio)) {
+    throw new SemanticPromptContractError('unsafe_expansion');
+  }
+  if (policy.enforce_maximum_added_characters
+      && responseLength - sourceLength > policy.maximum_added_characters) {
     throw new SemanticPromptContractError('unsafe_expansion');
   }
   if (policy.reject_source_fragment && responseCore !== sourceCore
-      && responseCore.length < sourceCore.length
+      && responseLength < sourceLength
       && (sourceCore.startsWith(responseCore) || sourceCore.endsWith(responseCore))) {
     throw new SemanticPromptContractError('source_fragment');
+  }
+  if (policy.reject_source_repetition
+      && repeatsCompleteSource(
+        sourceCore,
+        responseCore,
+        policy.minimum_embedded_source_repetition_characters,
+      )) {
+    throw new SemanticPromptContractError('source_repetition');
   }
 
   for (const type of policy.protected_token_types) {
@@ -260,10 +370,12 @@ export function validatePlainTextResponse({ operationId, source, response }) {
       throw new SemanticPromptContractError(`protected_${type}`);
     }
   }
-  if (wordOverlapRatio(sourceCore, responseCore) < policy.minimum_word_overlap_ratio) {
+  if (policy.enforce_word_overlap
+      && wordOverlapRatio(sourceCore, responseCore) < policy.minimum_word_overlap_ratio) {
     throw new SemanticPromptContractError('meaning_overlap');
   }
 
+  if (policy.preserve_response_whitespace) return response;
   if (policy.preserve_boundary_whitespace) {
     return sourceParts.leading + responseCore + sourceParts.trailing;
   }
@@ -301,7 +413,7 @@ export function gatewayPromptPresets() {
       request: Object.freeze({
         operation: rendered.wireOperationId,
         input_text: fixture.input,
-        response_format: rendered.responseFormat,
+        ...(rendered.responseFormat === null ? {} : { response_format: rendered.responseFormat }),
         max_tokens: rendered.maxTokens,
         ...(rendered.temperature === null ? {} : { temperature: rendered.temperature }),
       }),

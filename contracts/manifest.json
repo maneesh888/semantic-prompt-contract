@@ -1,12 +1,11 @@
 {
   "$schema": "../schemas/manifest.schema.json",
-  "schema_version": "2.2.0",
-  "contract_version": "4.1.0",
+  "schema_version": "3.0.0",
+  "contract_version": "5.0.0",
   "packs": [
     {
       "id": "writing-actions",
-      "path": "writing-actions.json",
-      "response_schema": "../schemas/writing-action-response.schema.json"
+      "path": "writing-actions.json"
     },
     {
       "id": "keyboard-suggestions",
