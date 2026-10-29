@@ -26,12 +26,12 @@ test('every operation renders deterministic ordered messages and metadata', () =
     const second = render(args);
     assert.deepEqual(first, second);
     assert.deepEqual(first.messages.map((message) => message.role), ['system', 'user']);
-    assert.equal(first.contractVersion, '5.0.0');
+    assert.equal(first.contractVersion, '5.1.0');
     assert.equal(first.schemaVersion, '3.0.0');
     assert.equal(first.responseFormat, null);
     assert.equal(first.responseSchema, null);
     if (operationId === 'fix_grammar') {
-      assert.equal(first.temperature, null);
+      assert.equal(first.temperature, 0);
       assert.equal(first.plainTextValidation, null);
     } else {
       assert.equal(first.temperature, 0.1);
@@ -217,11 +217,11 @@ test('gateway compatibility presets are generated from canonical fixtures', () =
     'Plain-text operation · Rewrite',
     'Plain-text operation · Translate to Dutch',
   ]);
-  assert.ok(presets.every((preset) => preset.contractVersion === '5.0.0'));
+  assert.ok(presets.every((preset) => preset.contractVersion === '5.1.0'));
   assert.ok(presets.every((preset) => !Object.hasOwn(preset.request, 'response_format')));
   assert.ok(presets.every((preset) => preset.responseSchema === null));
   assert.ok(presets.every((preset) => preset.resultTypes.length === 1 && preset.resultTypes[0] === 'plain_text'));
-  assert.equal(Object.hasOwn(presets[0].request, 'temperature'), false);
+  assert.equal(presets[0].request.temperature, 0);
   assert.equal(presets[4].request.temperature, 0.1);
   const rewrite = presets[5];
   assert.equal(rewrite.operationId, 'rewrite');
@@ -252,7 +252,7 @@ test('generated browser adapter exposes every canonical gateway preset', () => {
   );
   runInNewContext(source, context);
 
-  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '5.0.0');
+  assert.equal(context.globalThis.SemanticPromptContractBrowser.contractVersion, '5.1.0');
   assert.deepEqual(
     Array.from(
       context.globalThis.SemanticPromptContractBrowser.gatewayPromptPresets,

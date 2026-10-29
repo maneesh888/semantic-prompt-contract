@@ -1,6 +1,6 @@
 # semantic-prompt-contract
 
-`semantic-prompt-contract` is the canonical, versioned source for reusable semantic instructions used by OpenKeyboard and its gateway diagnostics. Version `5.0.0` makes every built-in writing action—Grammar, Rewrite, Improve, Summarize, Translate, and Continue Writing—return plain text with no transport `response_format` or active response schema. The separately defined keyboard-suggestions pack keeps its prompt-owned JSON contract.
+`semantic-prompt-contract` is the canonical, versioned source for reusable semantic instructions used by OpenKeyboard and its gateway diagnostics. Version `5.1.0` keeps every built-in writing action—Grammar, Rewrite, Improve, Summarize, Translate, and Continue Writing—on plain-text output with no transport `response_format` or active response schema, and makes Grammar request deterministic sampling with `temperature: 0.0`. The separately defined keyboard-suggestions pack keeps its prompt-owned JSON contract.
 
 The package owns operation identifiers, descriptions, parameters, semantic instructions, deterministic rendering, response-format metadata, response schemas, examples, and fixtures. It owns structural validation policies for Rewrite, Improve, Summarize, Translate, and Continue Writing; consumers retain specialized Grammar validation and diffing. It deliberately does not own UI, networking, authentication, API keys, model selection, provider routing, persistence, application state, or deployment configuration.
 
