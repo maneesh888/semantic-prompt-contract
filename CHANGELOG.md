@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.1.0
+
+- Make Grammar explicitly request `temperature: 0.0` instead of leaving sampling at the provider default, so compatible gateways receive the deterministic preference owned by the operation contract.
+- Preserve the existing plain-text request and response shape, prompt wording, validation ownership, identifiers, and token limit.
+
+This is a minor release because it adds a backward-compatible generation setting to an existing operation rendering.
+
 ## 5.0.0
 
 - Change Summarize, Translate, and Continue Writing from the legacy JSON result envelope to one plain-text response, so all built-in writing actions now omit transport `response_format` and active response-schema metadata.

@@ -31,12 +31,12 @@ final class SemanticPromptContractTests: XCTestCase {
             let first = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             let second = try SemanticPromptContract.renderWriting(operationID: operation, input: "Hello 👋", parameters: parameters)
             XCTAssertEqual(first, second)
-            XCTAssertEqual(first.contractVersion, "5.0.0")
+            XCTAssertEqual(first.contractVersion, "5.1.0")
             XCTAssertEqual(first.schemaVersion, "3.0.0")
             XCTAssertEqual(first.messages.map(\.role), ["system", "user"])
             XCTAssertNil(first.responseFormatType)
             if operation == "fix_grammar" {
-                XCTAssertNil(first.temperature)
+                XCTAssertEqual(first.temperature, 0)
                 XCTAssertNil(first.plainTextValidationPolicy)
             } else {
                 XCTAssertEqual(first.temperature, 0.1)
@@ -202,7 +202,7 @@ final class SemanticPromptContractTests: XCTestCase {
         XCTAssertEqual(preset.rendering.wireOperationID, "fix_grammar")
         XCTAssertEqual(preset.rendering.messages.last?.content, preset.input)
         XCTAssertNil(preset.rendering.responseFormatType)
-        XCTAssertNil(preset.rendering.temperature)
+        XCTAssertEqual(preset.rendering.temperature, 0)
         XCTAssertEqual(preset.resultTypes, ["plain_text"])
         XCTAssertEqual(
             try SemanticPromptContract.validateGatewayPromptResponse(

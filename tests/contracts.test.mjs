@@ -12,7 +12,7 @@ test('manifest and every canonical contract satisfy their schemas', () => {
   assert.equal(validateManifest(manifest), true, JSON.stringify(validateManifest.errors));
   const validateContract = ajv.compile(readJSON('schemas/contract.schema.json'));
   assert.equal(manifest.schema_version, '3.0.0');
-  assert.equal(manifest.contract_version, '5.0.0');
+  assert.equal(manifest.contract_version, '5.1.0');
   assert.equal(manifest.packs.find((entry) => entry.id === 'writing-actions').response_schema, undefined);
   assert.equal(
     manifest.packs.find((entry) => entry.id === 'keyboard-suggestions').response_schema,
@@ -67,7 +67,7 @@ test('every writing operation owns an explicit plain-text contract', () => {
   const grammar = contract.operations.find((operation) => operation.id === 'fix_grammar');
   assert.equal(grammar.user_message_mode, 'raw_input');
   assert.equal(grammar.response_format, 'plain_text');
-  assert.equal(grammar.temperature, null);
+  assert.equal(grammar.temperature, 0);
   assert.equal(grammar.max_tokens, 12000);
   assert.equal(grammar.rules.length, 0);
   const replacementOperations = contract.operations.filter((operation) => (
