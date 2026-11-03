@@ -20,6 +20,10 @@ function swift(value) {
   return JSON.stringify(value).replaceAll('\\(', '\\\\(');
 }
 
+function kotlin(value) {
+  return JSON.stringify(value).replaceAll('$', '\\$');
+}
+
 function parameterCode(operation) {
   const definitions = operation.parameters;
   const allowed = definitions.map((parameter) => swift(parameter.name)).join(', ');
@@ -318,6 +322,8 @@ const renderedSwiftSource = swiftSource.replace(
 const output = join(root, 'adapters/swift/Sources/SemanticPromptContract/SemanticPromptContract.generated.swift');
 const browserOutput = join(root, 'adapters/browser/semanticPromptContract.generated.js');
 const swiftParityOutput = join(root, 'adapters/swift/Tests/SemanticPromptContractTests/SemanticPromptContractParity.generated.swift');
+const kotlinDataOutput = join(root, 'adapters/kotlin/src/commonMain/kotlin/com/maneesh/semanticpromptcontract/CanonicalContractData.generated.kt');
+const kotlinParityOutput = join(root, 'adapters/kotlin/src/commonTest/kotlin/com/maneesh/semanticpromptcontract/SemanticPromptContractParity.generated.kt');
 const browserSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.\n` +
   `globalThis.SemanticPromptContractBrowser=Object.freeze(${JSON.stringify({
     contractVersion: manifest.contract_version,
@@ -362,11 +368,50 @@ let semanticPlainTextValidationFixtures: [SemanticPlainTextValidationFixture] = 
 ${plainTextValidationFixtures.map((fixture) => `    SemanticPlainTextValidationFixture(caseID: ${swift(fixture.id)}, operationID: ${swift(fixture.operation_id)}, source: ${swift(fixture.source)}, response: ${swift(fixture.response)}, valid: ${fixture.valid}, expected: ${fixture.expected === undefined ? 'nil' : swift(fixture.expected)})`).join(',\n')}
 ]
 `;
+const kotlinDataSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.
+package com.maneesh.semanticpromptcontract
+
+internal object CanonicalContractData {
+    const val manifestJson: String = ${kotlin(JSON.stringify(manifest))}
+    const val writingJson: String = ${kotlin(JSON.stringify(writing))}
+    const val suggestionsJson: String = ${kotlin(JSON.stringify(suggestions))}
+    const val gatewayPresetsJson: String = ${kotlin(JSON.stringify(readJSON('fixtures/gateway-presets.json')))}
+}
+`;
+const kotlinParitySource = `// Generated from canonical fixtures by scripts/generate-adapters.mjs. Do not edit manually.
+package com.maneesh.semanticpromptcontract
+
+internal val semanticPromptParityFixtures: List<SemanticPromptParityFixture> = listOf(
+${equivalence.map((fixture) => {
+  const rendered = render({
+    packId: fixture.pack_id,
+    operationId: fixture.operation_id,
+    input: fixture.input,
+    parameters: fixture.parameters,
+  });
+  const entries = Object.entries(fixture.parameters);
+  const parameters = entries.length === 0
+    ? 'emptyMap()'
+    : `mapOf(${entries.map(([name, value]) => `${kotlin(name)} to ${kotlin(value)}`).join(', ')})`;
+  return `    SemanticPromptParityFixture(caseId = ${kotlin(fixture.case_id)}, packId = ${kotlin(fixture.pack_id)}, operationId = ${kotlin(fixture.operation_id)}, input = ${kotlin(fixture.input)}, parameters = ${parameters}, expectedUserMessage = ${kotlin(rendered.messages.at(-1).content)})`;
+}).join(',\n')}
+)
+
+internal val semanticPlainTextValidationFixtures: List<SemanticPlainTextValidationFixture> = listOf(
+${plainTextValidationFixtures.map((fixture) => `    SemanticPlainTextValidationFixture(caseId = ${kotlin(fixture.id)}, operationId = ${kotlin(fixture.operation_id)}, source = ${kotlin(fixture.source)}, response = ${kotlin(fixture.response)}, valid = ${fixture.valid}, expected = ${fixture.expected === undefined ? 'null' : kotlin(fixture.expected)}, expectedError = ${fixture.expected_error === undefined ? 'null' : kotlin(fixture.expected_error)})`).join(',\n')}
+)
+`;
 if (check) {
   const current = readFileSync(output, 'utf8');
   const currentBrowser = readFileSync(browserOutput, 'utf8');
   const currentSwiftParity = readFileSync(swiftParityOutput, 'utf8');
-  if (current !== renderedSwiftSource || currentBrowser !== browserSource || currentSwiftParity !== swiftParitySource) {
+  const currentKotlinData = readFileSync(kotlinDataOutput, 'utf8');
+  const currentKotlinParity = readFileSync(kotlinParityOutput, 'utf8');
+  if (current !== renderedSwiftSource
+      || currentBrowser !== browserSource
+      || currentSwiftParity !== swiftParitySource
+      || currentKotlinData !== kotlinDataSource
+      || currentKotlinParity !== kotlinParitySource) {
     console.error('Generated adapters are out of sync. Run npm run generate.');
     process.exit(1);
   }
@@ -374,7 +419,11 @@ if (check) {
   mkdirSync(dirname(output), { recursive: true });
   mkdirSync(dirname(browserOutput), { recursive: true });
   mkdirSync(dirname(swiftParityOutput), { recursive: true });
+  mkdirSync(dirname(kotlinDataOutput), { recursive: true });
+  mkdirSync(dirname(kotlinParityOutput), { recursive: true });
   writeFileSync(output, renderedSwiftSource);
   writeFileSync(browserOutput, browserSource);
   writeFileSync(swiftParityOutput, swiftParitySource);
+  writeFileSync(kotlinDataOutput, kotlinDataSource);
+  writeFileSync(kotlinParityOutput, kotlinParitySource);
 }

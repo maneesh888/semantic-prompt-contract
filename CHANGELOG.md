@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Add a generated Kotlin Multiplatform adapter backed only by canonical JSON, with JVM, Android,
+  iOS, and macOS targets.
+- Prove JavaScript/Swift/Kotlin rendering and plain-text validation parity against the existing
+  canonical fixtures without changing operation identifiers, messages, parameters, schemas, or
+  response behavior.
+
+This is a patch-level packaging and adapter addition. The semantic contract remains `5.0.0`
+because no observable operation rendering or validation policy changed.
+
 ## 5.0.0
 
 - Change Summarize, Translate, and Continue Writing from the legacy JSON result envelope to one plain-text response, so all built-in writing actions now omit transport `response_format` and active response-schema metadata.
