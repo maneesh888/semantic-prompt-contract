@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Add a generated Kotlin Multiplatform adapter backed only by canonical JSON, with JVM, Android,
+  iOS, and macOS targets.
+- Prove JavaScript/Swift/Kotlin rendering and plain-text validation parity against the existing
+  canonical fixtures without changing operation identifiers, messages, parameters, schemas, or
+  response behavior.
+
+This is a patch-level packaging and adapter addition. The semantic contract remains `5.1.0`
+because no observable operation rendering or validation policy changed.
+
 ## 5.1.0
 
 - Make Grammar explicitly request `temperature: 0.0` instead of leaving sampling at the provider default, so compatible gateways receive the deterministic preference owned by the operation contract.

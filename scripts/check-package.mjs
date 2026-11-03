@@ -17,7 +17,16 @@ const required = [
   'fixtures/legacy/writing-action-response.invalid.json',
   'adapters/swift/Sources/SemanticPromptContract/SemanticPromptContract.generated.swift',
   'adapters/swift/Sources/SemanticPromptContract/SemanticPlainTextResponseValidator.swift',
+  'adapters/kotlin/src/commonMain/kotlin/com/maneesh/semanticpromptcontract/CanonicalContractData.generated.kt',
+  'adapters/kotlin/src/commonMain/kotlin/com/maneesh/semanticpromptcontract/SemanticPromptContract.kt',
+  'adapters/kotlin/src/commonMain/kotlin/com/maneesh/semanticpromptcontract/SemanticPlainTextResponseValidator.kt',
+  'adapters/kotlin/src/commonTest/kotlin/com/maneesh/semanticpromptcontract/SemanticPromptContractParity.generated.kt',
   'adapters/browser/semanticPromptContract.generated.js',
+  'build.gradle.kts',
+  'settings.gradle.kts',
+  'gradle/wrapper/gradle-wrapper.jar',
+  'gradle/wrapper/gradle-wrapper.properties',
+  'gradlew',
 ];
 const files = new Set(report.files.map((entry) => entry.path));
 for (const path of required) {
