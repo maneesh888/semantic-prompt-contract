@@ -3,6 +3,9 @@ plugins {
     id("com.android.kotlin.multiplatform.library") version "9.3.1"
 }
 
+group = "com.maneesh.semanticpromptcontract"
+version = "5.1.0"
+
 if (JavaVersion.current() != JavaVersion.VERSION_21) {
     throw GradleException(
         "Java 21 is required to build semantic-prompt-contract. Current runtime: ${JavaVersion.current()}",
