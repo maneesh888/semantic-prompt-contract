@@ -10,6 +10,7 @@ import {
   SemanticPromptContractError,
   validatePlainTextResponse,
 } from '../src/index.js';
+import { unicode17ExtendedGraphemeClusters } from '../src/unicode17-grapheme.js';
 
 const readJSON = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
 const readText = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -133,14 +134,25 @@ test('canonical operation-specific plain-text validation accepts safe text and r
 });
 
 test('JavaScript grapheme segmentation matches the official Unicode 17 conformance corpus', () => {
-  const segmenter = new Intl.Segmenter('en-US', { granularity: 'grapheme' });
   for (const fixture of parseUnicodeGraphemeBreakTest()) {
     assert.deepEqual(
-      [...segmenter.segment(fixture.input)].map(({ segment }) => segment),
+      unicode17ExtendedGraphemeClusters(fixture.input),
       fixture.expectedClusters,
       `GraphemeBreakTest line ${fixture.line}`,
     );
   }
+});
+
+test('JavaScript protected emoji classification uses bundled Unicode 17 data', () => {
+  const unicode17EmojiMissingFromUnicode16 = String.fromCodePoint(0x1F6D8);
+  assert.throws(
+    () => validatePlainTextResponse({
+      operationId: 'translate',
+      source: `Keep ${unicode17EmojiMissingFromUnicode16} today.`,
+      response: 'Gardez ceci aujourd’hui.',
+    }),
+    (error) => error instanceof SemanticPromptContractError && error.message === 'protected_emoji',
+  );
 });
 
 test('exact rendering validation uses the selected policy and preserves continuation whitespace byte for byte', () => {

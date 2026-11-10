@@ -417,6 +417,7 @@ const renderedSwiftSource = swiftSource.replace(
     `    public static let keyboardSuggestionsSystemInstruction = ${swift(suggestions.system_instruction)}`,
 );
 const output = join(root, 'adapters/swift/Sources/SemanticPromptContract/SemanticPromptContract.generated.swift');
+const javascriptUnicodeDataOutput = join(root, 'src/unicode17-grapheme-data.generated.js');
 const browserOutput = join(root, 'adapters/browser/semanticPromptContract.generated.js');
 const swiftParityOutput = join(root, 'adapters/swift/Tests/SemanticPromptContractTests/SemanticPromptContractParity.generated.swift');
 const kotlinDataOutput = join(root, 'adapters/kotlin/src/commonMain/kotlin/com/maneesh/semanticpromptcontract/CanonicalContractData.generated.kt');
@@ -511,6 +512,33 @@ internal val unicode17InCbLinkerRanges: IntArray = intArrayOf(
 ${unicode17InCbLinkerRanges.map(([lower, upper]) => `    0x${lower.toString(16).toUpperCase()}, 0x${upper.toString(16).toUpperCase()},`).join('\n')}
 )
 `;
+const javascriptRanges = (ranges) => ranges
+  .map(([lower, upper]) => `  0x${lower.toString(16).toUpperCase()}, 0x${upper.toString(16).toUpperCase()},`)
+  .join('\n');
+const javascriptUnicodeDataSource = `// Generated from fixtures/unicode/*-17.0.0.txt by scripts/generate-adapters.mjs. Do not edit manually.
+
+export const unicode17EmojiPresentationRanges = Object.freeze([
+${javascriptRanges(unicode17EmojiPresentationRanges)}
+]);
+
+export const unicode17ExtendedPictographicRanges = Object.freeze([
+${javascriptRanges(unicode17ExtendedPictographicRanges)}
+]);
+
+${graphemeBreakProperties.map(({ name, ranges }) => `export const unicode17Grapheme${name}Ranges = Object.freeze([\n${javascriptRanges(ranges)}\n]);`).join('\n\n')}
+
+export const unicode17InCbConsonantRanges = Object.freeze([
+${javascriptRanges(unicode17InCbConsonantRanges)}
+]);
+
+export const unicode17InCbExtendRanges = Object.freeze([
+${javascriptRanges(unicode17InCbExtendRanges)}
+]);
+
+export const unicode17InCbLinkerRanges = Object.freeze([
+${javascriptRanges(unicode17InCbLinkerRanges)}
+]);
+`;
 const kotlinParitySource = `// Generated from canonical fixtures by scripts/generate-adapters.mjs. Do not edit manually.
 package com.maneesh.semanticpromptcontract
 
@@ -546,12 +574,14 @@ ${unicode17GraphemeBreakFixtures.map((fixture) => `    UnicodeGraphemeBreakFixtu
 `;
 if (check) {
   const current = readFileSync(output, 'utf8');
+  const currentJavaScriptUnicodeData = readFileSync(javascriptUnicodeDataOutput, 'utf8');
   const currentBrowser = readFileSync(browserOutput, 'utf8');
   const currentSwiftParity = readFileSync(swiftParityOutput, 'utf8');
   const currentKotlinData = readFileSync(kotlinDataOutput, 'utf8');
   const currentKotlinUnicodeData = readFileSync(kotlinUnicodeDataOutput, 'utf8');
   const currentKotlinParity = readFileSync(kotlinParityOutput, 'utf8');
   if (current !== renderedSwiftSource
+      || currentJavaScriptUnicodeData !== javascriptUnicodeDataSource
       || currentBrowser !== browserSource
       || currentSwiftParity !== swiftParitySource
       || currentKotlinData !== kotlinDataSource
@@ -562,12 +592,14 @@ if (check) {
   }
 } else {
   mkdirSync(dirname(output), { recursive: true });
+  mkdirSync(dirname(javascriptUnicodeDataOutput), { recursive: true });
   mkdirSync(dirname(browserOutput), { recursive: true });
   mkdirSync(dirname(swiftParityOutput), { recursive: true });
   mkdirSync(dirname(kotlinDataOutput), { recursive: true });
   mkdirSync(dirname(kotlinUnicodeDataOutput), { recursive: true });
   mkdirSync(dirname(kotlinParityOutput), { recursive: true });
   writeFileSync(output, renderedSwiftSource);
+  writeFileSync(javascriptUnicodeDataOutput, javascriptUnicodeDataSource);
   writeFileSync(browserOutput, browserSource);
   writeFileSync(swiftParityOutput, swiftParitySource);
   writeFileSync(kotlinDataOutput, kotlinDataSource);

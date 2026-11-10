@@ -7,9 +7,12 @@
 - Prove JavaScript/Swift/Kotlin rendering and plain-text validation parity against the existing
   canonical fixtures without changing operation identifiers, messages, parameters, schemas, or
   response behavior.
+- Use generated Unicode 17 grapheme and Emoji_Presentation tables for JavaScript validation so the
+  declared Node 22 and 24 ranges do not inherit version-dependent `Intl.Segmenter` behavior.
 
-This is a patch-level packaging and adapter addition. The semantic contract remains `5.1.0`
-because no observable operation rendering or validation policy changed.
+This is a patch-level packaging, adapter, and compatibility correction. The semantic contract
+remains `5.1.0` because no operation rendering or validation policy changed; JavaScript behavior
+on older embedded Unicode data is corrected to the already documented Unicode 17 policy.
 
 ## 5.1.0
 

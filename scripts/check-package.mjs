@@ -7,6 +7,8 @@ const required = [
   'contracts/writing-actions.json',
   'contracts/keyboard-suggestions.json',
   'docs/UNICODE_SEGMENTATION.md',
+  'src/unicode17-grapheme.js',
+  'src/unicode17-grapheme-data.generated.js',
   'schemas/contract.schema.json',
   'schemas/writing-action-response.schema.json',
   'fixtures/plain-text-validation/rewrite-replacements.json',

@@ -3,24 +3,26 @@
 Protected emoji are compared as multisets of complete extended grapheme clusters. A cluster is
 protected when it contains at least one scalar with the Unicode `Emoji_Presentation` property.
 
-The Kotlin adapter implements the extended-grapheme boundary rules from Unicode UAX #29 revision
-47 in common code. Its Grapheme_Cluster_Break, Extended_Pictographic, Indic_Conjunct_Break, and
-Emoji_Presentation tables are generated from the official Unicode 17 property files; none is
-maintained by hand. JVM and macOS tests run the implementation against every case in the official
-Unicode 17 `GraphemeBreakTest.txt` corpus.
+The JavaScript and Kotlin adapters implement the extended-grapheme boundary rules from Unicode
+UAX #29 revision 47 in package-owned code. Their Grapheme_Cluster_Break,
+Extended_Pictographic, Indic_Conjunct_Break, and Emoji_Presentation tables are generated from the
+official Unicode 17 property files; none is maintained by hand. JavaScript, JVM, and macOS tests
+run the implementations against every case in the official Unicode 17
+`GraphemeBreakTest.txt` corpus.
 
-JavaScript continues to use `Intl.Segmenter`, and Swift continues to use native `String.Character`
-segmentation. JavaScript is checked against the complete official Unicode 17
-`GraphemeBreakTest.txt` corpus. Every native adapter is checked against the complete subset of that
-corpus containing an `Emoji_Presentation` scalar, which is the subset this validator can protect.
-The shared protected-emoji corpus also covers emoji modifiers on text-presentation bases,
-regional-indicator clusters with combining marks, ordinary emoji with combining marks, trailing
-ZWJ, and Grapheme_Cluster_Break `Prepend` characters.
+JavaScript does not use runtime `Intl.Segmenter` or runtime Unicode property escapes for protected
+emoji. This keeps validation on Unicode 17 even when a supported Node release embeds older ICU or
+Unicode data. Swift continues to use native `String.Character` segmentation. Every native adapter
+is checked against the complete subset of the corpus containing an `Emoji_Presentation` scalar,
+which is the subset this validator can protect. The shared protected-emoji corpus also covers emoji
+modifiers on text-presentation bases, regional-indicator clusters with combining marks, ordinary
+emoji with combining marks, trailing ZWJ, and Grapheme_Cluster_Break `Prepend` characters.
 
 ## Evidence limits
 
-- Passing one host's tests does not prove every supported JavaScript engine or Apple OS embeds the
-  same Unicode data. Runtime Unicode-version skew remains possible.
+- JavaScript behavior is independent of the host's embedded Unicode data, but supported Node
+  minimums and current releases are still tested separately for module and language compatibility.
+  Swift remains subject to the Unicode behavior of the Apple OS and Swift runtime.
 - `unicode-segmentation-kotlin` 0.1.1 and 0.2.0 were evaluated and rejected. Neither publishes the
   required macOS x64 artifact, both embed Unicode 16 rather than 17, and both fail Unicode 17
   `GraphemeBreakTest` line 771 by joining two non-`Extended_Pictographic` scissors around ZWJ.
