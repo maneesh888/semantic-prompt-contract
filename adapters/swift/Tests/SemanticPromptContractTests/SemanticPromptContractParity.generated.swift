@@ -19,6 +19,7 @@ struct SemanticPlainTextValidationFixture {
 
 let semanticPromptParityFixtures: [SemanticPromptParityFixture] = [
     SemanticPromptParityFixture(caseID: "fix_grammar", packID: "writing-actions", operationID: "fix_grammar", input: "i has a apple", parameters: [:], expectedUserMessage: "i has a apple"),
+    SemanticPromptParityFixture(caseID: "fix-grammar-literal-unicode-escape", packID: "writing-actions", operationID: "fix_grammar", input: "Literal \\u0041 and \\u{0042} stay text.", parameters: [:], expectedUserMessage: "Literal \\u0041 and \\u{0042} stay text."),
     SemanticPromptParityFixture(caseID: "rewrite", packID: "writing-actions", operationID: "rewrite", input: "unclear text ✨", parameters: [:], expectedUserMessage: "unclear text ✨"),
     SemanticPromptParityFixture(caseID: "rewrite_core", packID: "writing-actions", operationID: "rewrite_core", input: "unclear text ✨", parameters: [:], expectedUserMessage: "unclear text ✨"),
     SemanticPromptParityFixture(caseID: "rewrite_shorten", packID: "writing-actions", operationID: "rewrite_shorten", input: "unclear text ✨", parameters: [:], expectedUserMessage: "unclear text ✨"),

@@ -32,9 +32,12 @@ ZWJ, and Grapheme_Cluster_Break `Prepend` characters.
   common implementation here, but their runtime tests remain unexecuted until target-specific
   tests run.
 - Swift's native `Character` additionally differs from Unicode 17 on eight Indic-conjunct cases
-  (corpus lines 785–792). None contains an `Emoji_Presentation` scalar, so the validator does not
-  classify those clusters as protected emoji; this is why cross-platform conformance is scoped to
-  the protected-emoji subset rather than generalized to arbitrary text segmentation.
+  (corpus lines 785–792). The published cases contain no `Emoji_Presentation` scalar, so they are
+  absent from the protected-emoji corpus subset. This difference can still affect validation: if a
+  skin-tone modifier is appended to a Khmer conjunct, Swift can protect only its final native
+  `Character` while JavaScript and Kotlin protect the complete Unicode 17 grapheme. A mutation to
+  the earlier conjunct can therefore be accepted by Swift and rejected by JavaScript/Kotlin. This
+  is a known pre-existing limitation; universal protected-emoji parity is not claimed.
 - These checks establish the documented Unicode 17 protected-emoji boundary and listed cases.
   They do not justify a broader cross-platform parity claim until independent exact-head review.
 

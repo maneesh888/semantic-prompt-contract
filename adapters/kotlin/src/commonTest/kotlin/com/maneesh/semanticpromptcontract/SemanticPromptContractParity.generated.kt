@@ -3,6 +3,7 @@ package com.maneesh.semanticpromptcontract
 
 internal val semanticPromptParityFixtures: List<SemanticPromptParityFixture> = listOf(
     SemanticPromptParityFixture(caseId = "fix_grammar", packId = "writing-actions", operationId = "fix_grammar", input = "i has a apple", parameters = emptyMap(), expectedUserMessage = "i has a apple"),
+    SemanticPromptParityFixture(caseId = "fix-grammar-literal-unicode-escape", packId = "writing-actions", operationId = "fix_grammar", input = "Literal \\u0041 and \\u{0042} stay text.", parameters = emptyMap(), expectedUserMessage = "Literal \\u0041 and \\u{0042} stay text."),
     SemanticPromptParityFixture(caseId = "rewrite", packId = "writing-actions", operationId = "rewrite", input = "unclear text ✨", parameters = emptyMap(), expectedUserMessage = "unclear text ✨"),
     SemanticPromptParityFixture(caseId = "rewrite_core", packId = "writing-actions", operationId = "rewrite_core", input = "unclear text ✨", parameters = emptyMap(), expectedUserMessage = "unclear text ✨"),
     SemanticPromptParityFixture(caseId = "rewrite_shorten", packId = "writing-actions", operationId = "rewrite_shorten", input = "unclear text ✨", parameters = emptyMap(), expectedUserMessage = "unclear text ✨"),

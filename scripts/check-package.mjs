@@ -6,6 +6,7 @@ const required = [
   'contracts/manifest.json',
   'contracts/writing-actions.json',
   'contracts/keyboard-suggestions.json',
+  'docs/UNICODE_SEGMENTATION.md',
   'schemas/contract.schema.json',
   'schemas/writing-action-response.schema.json',
   'fixtures/plain-text-validation/rewrite-replacements.json',

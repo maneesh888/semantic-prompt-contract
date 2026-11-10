@@ -98,9 +98,23 @@ const unicode17ProtectedEmojiGraphemeBreakFixtures = unicode17GraphemeBreakFixtu
   .filter(({ expectedProtectedClusters }) => expectedProtectedClusters.length > 0);
 
 function swift(value) {
-  return JSON.stringify(value)
-    .replaceAll('\\(', '\\\\(')
-    .replace(/\\u([0-9a-f]{4})/giu, '\\u{$1}');
+  let encoded = '"';
+  for (const scalar of value) {
+    switch (scalar) {
+      case '"': encoded += '\\"'; break;
+      case '\\': encoded += '\\\\'; break;
+      case '\n': encoded += '\\n'; break;
+      case '\r': encoded += '\\r'; break;
+      case '\t': encoded += '\\t'; break;
+      default: {
+        const codePoint = scalar.codePointAt(0);
+        encoded += codePoint <= 0x1F || codePoint === 0x7F
+          ? `\\u{${codePoint.toString(16).toUpperCase().padStart(4, '0')}}`
+          : scalar;
+      }
+    }
+  }
+  return `${encoded}"`;
 }
 
 function kotlin(value) {
