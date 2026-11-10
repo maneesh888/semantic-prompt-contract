@@ -11,18 +11,22 @@ run the implementations against every case in the official Unicode 17
 `GraphemeBreakTest.txt` corpus.
 
 JavaScript does not use runtime `Intl.Segmenter` or runtime Unicode property escapes for protected
-emoji. This keeps validation on Unicode 17 even when a supported Node release embeds older ICU or
-Unicode data. Swift continues to use native `String.Character` segmentation. Every native adapter
-is checked against the complete subset of the corpus containing an `Emoji_Presentation` scalar,
-which is the subset this validator can protect. The shared protected-emoji corpus also covers emoji
-modifiers on text-presentation bases, regional-indicator clusters with combining marks, ordinary
-emoji with combining marks, trailing ZWJ, and Grapheme_Cluster_Break `Prepend` characters.
+emoji. This keeps protected-emoji segmentation and classification on Unicode 17 even when a
+supported Node release embeds older ICU or Unicode data. Swift continues to use native
+`String.Character` segmentation. Every native adapter is checked against the complete subset of
+the corpus containing an `Emoji_Presentation` scalar, which is the subset this validator can
+protect. The shared protected-emoji corpus also covers emoji modifiers on text-presentation bases,
+regional-indicator clusters with combining marks, ordinary emoji with combining marks, trailing
+ZWJ, and Grapheme_Cluster_Break `Prepend` characters.
 
 ## Evidence limits
 
-- JavaScript behavior is independent of the host's embedded Unicode data, but supported Node
-  minimums and current releases are still tested separately for module and language compatibility.
-  Swift remains subject to the Unicode behavior of the Apple OS and Swift runtime.
+- JavaScript protected-emoji behavior is independent of the host's embedded Unicode data, but
+  other validation still uses runtime Unicode property escapes, case conversion, and normalization.
+  Those paths can vary for newly assigned scalars; for example, whether U+11DB0 participates in a
+  mention depends on the Node runtime's embedded Unicode data. Supported Node minimums and current
+  releases are therefore still tested separately. Swift remains subject to the Unicode behavior of
+  the Apple OS and Swift runtime.
 - `unicode-segmentation-kotlin` 0.1.1 and 0.2.0 were evaluated and rejected. Neither publishes the
   required macOS x64 artifact, both embed Unicode 16 rather than 17, and both fail Unicode 17
   `GraphemeBreakTest` line 771 by joining two non-`Extended_Pictographic` scissors around ZWJ.
