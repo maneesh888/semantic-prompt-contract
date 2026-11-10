@@ -6,6 +6,7 @@ import { gatewayPromptPresets, render } from '../src/index.js';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const check = process.argv.includes('--check');
 const readJSON = (path) => JSON.parse(readFileSync(join(root, path), 'utf8'));
+const readText = (path) => readFileSync(join(root, path), 'utf8');
 const manifest = readJSON('contracts/manifest.json');
 const writing = readJSON('contracts/writing-actions.json');
 const suggestions = readJSON('contracts/keyboard-suggestions.json');
@@ -13,11 +14,93 @@ const equivalence = readJSON('fixtures/rendering/equivalence.json');
 const plainTextValidationFixtures = [
   ...readJSON('fixtures/plain-text-validation/rewrite-replacements.json'),
   ...readJSON('fixtures/plain-text-validation/writing-actions.json'),
+  ...readJSON('fixtures/unicode/protected-emoji-cases.json'),
 ];
 const gatewayPresets = gatewayPromptPresets();
 
+const unicode17GraphemeBreakFixtures = readText('fixtures/unicode/GraphemeBreakTest-17.0.0.txt')
+  .split('\n')
+  .map((line, index) => ({ line: index + 1, data: line.split('#', 1)[0].trim() }))
+  .filter(({ data }) => data.length > 0)
+  .map(({ line, data }) => {
+    const expectedClusters = [];
+    let current = '';
+    for (const token of data.split(/\s+/u)) {
+      if (token === '÷') {
+        if (current.length > 0) expectedClusters.push(current);
+        current = '';
+      } else if (token !== '×') {
+        current += String.fromCodePoint(Number.parseInt(token, 16));
+      }
+    }
+    if (current.length > 0) expectedClusters.push(current);
+    return { line, input: expectedClusters.join(''), expectedClusters };
+  });
+
+const parseEncodedRange = (encodedRange) => {
+  const [lower, upper = lower] = encodedRange.trim().split('..');
+  return [Number.parseInt(lower, 16), Number.parseInt(upper, 16)];
+};
+const parseUnicodePropertyRanges = (path, property) => readText(path)
+  .split('\n')
+  .map((line) => line.split('#', 1)[0].trim())
+  .filter((line) => line.length > 0)
+  .map((line) => line.split(';').map((part) => part.trim()))
+  .filter((parts) => parts[1] === property)
+  .map(([encodedRange]) => parseEncodedRange(encodedRange));
+
+const unicode17EmojiPresentationRanges = parseUnicodePropertyRanges(
+  'fixtures/unicode/emoji-data-17.0.0.txt',
+  'Emoji_Presentation',
+);
+const unicode17ExtendedPictographicRanges = parseUnicodePropertyRanges(
+  'fixtures/unicode/emoji-data-17.0.0.txt',
+  'Extended_Pictographic',
+);
+const graphemeBreakProperties = [
+  ['CR', 'Cr'],
+  ['LF', 'Lf'],
+  ['Control', 'Control'],
+  ['Extend', 'Extend'],
+  ['Regional_Indicator', 'RegionalIndicator'],
+  ['Prepend', 'Prepend'],
+  ['SpacingMark', 'SpacingMark'],
+  ['L', 'L'],
+  ['V', 'V'],
+  ['T', 'T'],
+  ['LV', 'Lv'],
+  ['LVT', 'LvT'],
+  ['ZWJ', 'Zwj'],
+].map(([property, name]) => ({
+  name,
+  ranges: parseUnicodePropertyRanges('fixtures/unicode/GraphemeBreakProperty-17.0.0.txt', property),
+}));
+const parseInCbRanges = (kind) => readText('fixtures/unicode/IndicConjunctBreak-17.0.0.txt')
+  .split('\n')
+  .map((line) => line.split('#', 1)[0].trim())
+  .filter((line) => line.length > 0)
+  .map((line) => line.split(';').map((part) => part.trim()))
+  .filter((parts) => parts[1] === 'InCB' && parts[2] === kind)
+  .map(([encodedRange]) => parseEncodedRange(encodedRange));
+const unicode17InCbConsonantRanges = parseInCbRanges('Consonant');
+const unicode17InCbExtendRanges = parseInCbRanges('Extend');
+const unicode17InCbLinkerRanges = parseInCbRanges('Linker');
+
+const containsUnicode17EmojiPresentation = (value) => [...value].some((scalar) => {
+    const codePoint = scalar.codePointAt(0);
+    return unicode17EmojiPresentationRanges.some(([lower, upper]) => codePoint >= lower && codePoint <= upper);
+  });
+const unicode17ProtectedEmojiGraphemeBreakFixtures = unicode17GraphemeBreakFixtures
+  .map((fixture) => ({
+    ...fixture,
+    expectedProtectedClusters: fixture.expectedClusters.filter(containsUnicode17EmojiPresentation),
+  }))
+  .filter(({ expectedProtectedClusters }) => expectedProtectedClusters.length > 0);
+
 function swift(value) {
-  return JSON.stringify(value).replaceAll('\\(', '\\\\(');
+  return JSON.stringify(value)
+    .replaceAll('\\(', '\\\\(')
+    .replace(/\\u([0-9a-f]{4})/giu, '\\u{$1}');
 }
 
 function kotlin(value) {
@@ -323,6 +406,7 @@ const output = join(root, 'adapters/swift/Sources/SemanticPromptContract/Semanti
 const browserOutput = join(root, 'adapters/browser/semanticPromptContract.generated.js');
 const swiftParityOutput = join(root, 'adapters/swift/Tests/SemanticPromptContractTests/SemanticPromptContractParity.generated.swift');
 const kotlinDataOutput = join(root, 'adapters/kotlin/src/commonMain/kotlin/com/maneesh/semanticpromptcontract/CanonicalContractData.generated.kt');
+const kotlinUnicodeDataOutput = join(root, 'adapters/kotlin/src/commonMain/kotlin/com/maneesh/semanticpromptcontract/UnicodeData.generated.kt');
 const kotlinParityOutput = join(root, 'adapters/kotlin/src/commonTest/kotlin/com/maneesh/semanticpromptcontract/SemanticPromptContractParity.generated.kt');
 const browserSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.\n` +
   `globalThis.SemanticPromptContractBrowser=Object.freeze(${JSON.stringify({
@@ -367,6 +451,16 @@ ${equivalence.map((fixture) => {
 let semanticPlainTextValidationFixtures: [SemanticPlainTextValidationFixture] = [
 ${plainTextValidationFixtures.map((fixture) => `    SemanticPlainTextValidationFixture(caseID: ${swift(fixture.id)}, operationID: ${swift(fixture.operation_id)}, source: ${swift(fixture.source)}, response: ${swift(fixture.response)}, valid: ${fixture.valid}, expected: ${fixture.expected === undefined ? 'nil' : swift(fixture.expected)})`).join(',\n')}
 ]
+
+struct UnicodeGraphemeBreakFixture {
+    let line: Int
+    let input: String
+    let expectedProtectedClusters: [String]
+}
+
+let unicode17ProtectedEmojiGraphemeBreakFixtures: [UnicodeGraphemeBreakFixture] = [
+${unicode17ProtectedEmojiGraphemeBreakFixtures.map((fixture) => `    UnicodeGraphemeBreakFixture(line: ${fixture.line}, input: ${swift(fixture.input)}, expectedProtectedClusters: [${fixture.expectedProtectedClusters.map(swift).join(', ')}])`).join(',\n')}
+]
 `;
 const kotlinDataSource = `// Generated from contracts/*.json by scripts/generate-adapters.mjs. Do not edit manually.
 package com.maneesh.semanticpromptcontract
@@ -377,6 +471,31 @@ internal object CanonicalContractData {
     const val suggestionsJson: String = ${kotlin(JSON.stringify(suggestions))}
     const val gatewayPresetsJson: String = ${kotlin(JSON.stringify(readJSON('fixtures/gateway-presets.json')))}
 }
+`;
+const kotlinUnicodeDataSource = `// Generated from fixtures/unicode/*-17.0.0.txt by scripts/generate-adapters.mjs. Do not edit manually.
+package com.maneesh.semanticpromptcontract
+
+internal val unicode17EmojiPresentationRanges: IntArray = intArrayOf(
+${unicode17EmojiPresentationRanges.map(([lower, upper]) => `    0x${lower.toString(16).toUpperCase()}, 0x${upper.toString(16).toUpperCase()},`).join('\n')}
+)
+
+internal val unicode17ExtendedPictographicRanges: IntArray = intArrayOf(
+${unicode17ExtendedPictographicRanges.map(([lower, upper]) => `    0x${lower.toString(16).toUpperCase()}, 0x${upper.toString(16).toUpperCase()},`).join('\n')}
+)
+
+${graphemeBreakProperties.map(({ name, ranges }) => `internal val unicode17Grapheme${name}Ranges: IntArray = intArrayOf(\n${ranges.map(([lower, upper]) => `    0x${lower.toString(16).toUpperCase()}, 0x${upper.toString(16).toUpperCase()},`).join('\n')}\n)`).join('\n\n')}
+
+internal val unicode17InCbConsonantRanges: IntArray = intArrayOf(
+${unicode17InCbConsonantRanges.map(([lower, upper]) => `    0x${lower.toString(16).toUpperCase()}, 0x${upper.toString(16).toUpperCase()},`).join('\n')}
+)
+
+internal val unicode17InCbExtendRanges: IntArray = intArrayOf(
+${unicode17InCbExtendRanges.map(([lower, upper]) => `    0x${lower.toString(16).toUpperCase()}, 0x${upper.toString(16).toUpperCase()},`).join('\n')}
+)
+
+internal val unicode17InCbLinkerRanges: IntArray = intArrayOf(
+${unicode17InCbLinkerRanges.map(([lower, upper]) => `    0x${lower.toString(16).toUpperCase()}, 0x${upper.toString(16).toUpperCase()},`).join('\n')}
+)
 `;
 const kotlinParitySource = `// Generated from canonical fixtures by scripts/generate-adapters.mjs. Do not edit manually.
 package com.maneesh.semanticpromptcontract
@@ -400,17 +519,29 @@ ${equivalence.map((fixture) => {
 internal val semanticPlainTextValidationFixtures: List<SemanticPlainTextValidationFixture> = listOf(
 ${plainTextValidationFixtures.map((fixture) => `    SemanticPlainTextValidationFixture(caseId = ${kotlin(fixture.id)}, operationId = ${kotlin(fixture.operation_id)}, source = ${kotlin(fixture.source)}, response = ${kotlin(fixture.response)}, valid = ${fixture.valid}, expected = ${fixture.expected === undefined ? 'null' : kotlin(fixture.expected)}, expectedError = ${fixture.expected_error === undefined ? 'null' : kotlin(fixture.expected_error)})`).join(',\n')}
 )
+
+internal data class UnicodeGraphemeBreakFixture(
+    val line: Int,
+    val input: String,
+    val expectedClusters: List<String>,
+)
+
+internal val unicode17GraphemeBreakFixtures: List<UnicodeGraphemeBreakFixture> = listOf(
+${unicode17GraphemeBreakFixtures.map((fixture) => `    UnicodeGraphemeBreakFixture(line = ${fixture.line}, input = ${kotlin(fixture.input)}, expectedClusters = listOf(${fixture.expectedClusters.map(kotlin).join(', ')}))`).join(',\n')}
+)
 `;
 if (check) {
   const current = readFileSync(output, 'utf8');
   const currentBrowser = readFileSync(browserOutput, 'utf8');
   const currentSwiftParity = readFileSync(swiftParityOutput, 'utf8');
   const currentKotlinData = readFileSync(kotlinDataOutput, 'utf8');
+  const currentKotlinUnicodeData = readFileSync(kotlinUnicodeDataOutput, 'utf8');
   const currentKotlinParity = readFileSync(kotlinParityOutput, 'utf8');
   if (current !== renderedSwiftSource
       || currentBrowser !== browserSource
       || currentSwiftParity !== swiftParitySource
       || currentKotlinData !== kotlinDataSource
+      || currentKotlinUnicodeData !== kotlinUnicodeDataSource
       || currentKotlinParity !== kotlinParitySource) {
     console.error('Generated adapters are out of sync. Run npm run generate.');
     process.exit(1);
@@ -420,10 +551,12 @@ if (check) {
   mkdirSync(dirname(browserOutput), { recursive: true });
   mkdirSync(dirname(swiftParityOutput), { recursive: true });
   mkdirSync(dirname(kotlinDataOutput), { recursive: true });
+  mkdirSync(dirname(kotlinUnicodeDataOutput), { recursive: true });
   mkdirSync(dirname(kotlinParityOutput), { recursive: true });
   writeFileSync(output, renderedSwiftSource);
   writeFileSync(browserOutput, browserSource);
   writeFileSync(swiftParityOutput, swiftParitySource);
   writeFileSync(kotlinDataOutput, kotlinDataSource);
+  writeFileSync(kotlinUnicodeDataOutput, kotlinUnicodeDataSource);
   writeFileSync(kotlinParityOutput, kotlinParitySource);
 }

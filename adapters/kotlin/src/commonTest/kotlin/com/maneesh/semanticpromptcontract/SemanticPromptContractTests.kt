@@ -65,6 +65,17 @@ class SemanticPromptContractTests {
     }
 
     @Test
+    fun graphemeSegmentationMatchesOfficialUnicode17ConformanceCorpus() {
+        for (fixture in unicode17GraphemeBreakFixtures) {
+            assertEquals(
+                fixture.expectedClusters,
+                unicode17ExtendedGraphemeClusters(fixture.input),
+                "GraphemeBreakTest line ${fixture.line}",
+            )
+        }
+    }
+
+    @Test
     fun everyWritingOperationRendersStableMetadata() {
         assertEquals("5.1.0", SemanticPromptContract.version)
         assertEquals("3.0.0", SemanticPromptContract.schemaVersion)

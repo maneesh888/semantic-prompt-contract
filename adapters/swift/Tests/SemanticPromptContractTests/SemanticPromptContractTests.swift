@@ -147,6 +147,18 @@ final class SemanticPromptContractTests: XCTestCase {
         }
     }
 
+    func testProtectedEmojiSegmentationMatchesUnicode17ConformanceCorpus() {
+        for fixture in unicode17ProtectedEmojiGraphemeBreakFixtures {
+            XCTAssertEqual(
+                fixture.input.map(String.init).filter { character in
+                    character.unicodeScalars.contains { $0.properties.isEmojiPresentation }
+                },
+                fixture.expectedProtectedClusters,
+                "GraphemeBreakTest line \(fixture.line)"
+            )
+        }
+    }
+
     func testExactRenderingValidationPreservesContinuationWhitespaceByteForByte() throws {
         let rendering = try SemanticPromptContract.renderWriting(
             operationID: "continue_writing",

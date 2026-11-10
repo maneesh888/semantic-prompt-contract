@@ -12,6 +12,28 @@ import {
 } from '../src/index.js';
 
 const readJSON = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
+const readText = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+
+function parseUnicodeGraphemeBreakTest() {
+  return readText('fixtures/unicode/GraphemeBreakTest-17.0.0.txt')
+    .split('\n')
+    .map((line, index) => ({ line: index + 1, data: line.split('#', 1)[0].trim() }))
+    .filter(({ data }) => data.length > 0)
+    .map(({ line, data }) => {
+      const expectedClusters = [];
+      let current = '';
+      for (const token of data.split(/\s+/u)) {
+        if (token === '÷') {
+          if (current.length > 0) expectedClusters.push(current);
+          current = '';
+        } else if (token !== '×') {
+          current += String.fromCodePoint(Number.parseInt(token, 16));
+        }
+      }
+      if (current.length > 0) expectedClusters.push(current);
+      return { line, input: expectedClusters.join(''), expectedClusters };
+    });
+}
 
 test('every operation renders deterministic ordered messages and metadata', () => {
   const expectedModes = new Map([
@@ -83,6 +105,7 @@ test('canonical operation-specific plain-text validation accepts safe text and r
   const fixtures = [
     ...readJSON('fixtures/plain-text-validation/rewrite-replacements.json'),
     ...readJSON('fixtures/plain-text-validation/writing-actions.json'),
+    ...readJSON('fixtures/unicode/protected-emoji-cases.json'),
   ];
   for (const fixture of fixtures) {
     if (fixture.valid) {
@@ -106,6 +129,17 @@ test('canonical operation-specific plain-text validation accepts safe text and r
         fixture.id,
       );
     }
+  }
+});
+
+test('JavaScript grapheme segmentation matches the official Unicode 17 conformance corpus', () => {
+  const segmenter = new Intl.Segmenter('en-US', { granularity: 'grapheme' });
+  for (const fixture of parseUnicodeGraphemeBreakTest()) {
+    assert.deepEqual(
+      [...segmenter.segment(fixture.input)].map(({ segment }) => segment),
+      fixture.expectedClusters,
+      `GraphemeBreakTest line ${fixture.line}`,
+    );
   }
 });
 
