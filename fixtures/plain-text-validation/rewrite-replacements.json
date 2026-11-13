@@ -40,6 +40,70 @@
     "expected": "Please use ```inline``` code in the note."
   },
   {
+    "id": "reject-split-family-emoji-grapheme",
+    "operation_id": "rewrite",
+    "source": "The family 👨‍👩‍👧‍👦 will review the project update tomorrow morning.",
+    "response": "The family 👨 👩 👧 👦 will review the project update tomorrow morning.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "reject-reassigned-emoji-skin-tones",
+    "operation_id": "rewrite",
+    "source": "Alex 👋🏽 and Sam 👍🏻 will review the project update tomorrow.",
+    "response": "Alex 👋🏻 and Sam 👍🏽 will review the project update tomorrow.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "reject-regrouped-regional-indicator-flags",
+    "operation_id": "rewrite",
+    "source": "Routes 🇺🇸 and 🇨🇦 remain available for the project review today.",
+    "response": "Routes 🇺🇦 and 🇨🇸 remain available for the project review today.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "reject-rainbow-flag-zwj-prefix-loss",
+    "operation_id": "rewrite",
+    "source": "The flag 🏳️‍🌈 remains available for the project review today.",
+    "response": "The flag 🌈 remains available for the project review today.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "reject-heart-on-fire-zwj-prefix-loss",
+    "operation_id": "rewrite",
+    "source": "The symbol ❤️‍🔥 remains available for the project review today.",
+    "response": "The symbol 🔥 remains available for the project review today.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "reject-emoji-combining-mark-change",
+    "operation_id": "rewrite",
+    "source": "The alert 🔥́ remains visible during the project review today.",
+    "response": "The alert 🔥̀ remains visible during the project review today.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "allow-editing-non-emoji-symbol",
+    "operation_id": "rewrite",
+    "source": "Press ⌘K to open the project search panel today.",
+    "response": "Press Command-K to open the project search panel today.",
+    "valid": true,
+    "expected": "Press Command-K to open the project search panel today."
+  },
+  {
+    "id": "allow-edit-after-url-delimited-by-nbsp",
+    "operation_id": "rewrite",
+    "source": "Open https://example.com/path before reviewing the project update today.",
+    "response": "Open https://example.com/path after reviewing the project update today.",
+    "valid": true,
+    "expected": "Open https://example.com/path after reviewing the project update today."
+  },
+  {
     "id": "reject-empty",
     "operation_id": "improve",
     "source": "This update should be clearer.",
@@ -78,6 +142,22 @@
     "response": "The first paragraph contains a complete update",
     "valid": false,
     "expected_error": "source_fragment"
+  },
+  {
+    "id": "reject-truncation-marker-after-nbsp",
+    "operation_id": "rewrite",
+    "source": "Please rewrite this project update carefully for the team today.",
+    "response": "Please rewrite this project update carefully [truncated]",
+    "valid": false,
+    "expected_error": "truncated"
+  },
+  {
+    "id": "reject-truncation-marker-after-narrow-nbsp",
+    "operation_id": "rewrite",
+    "source": "Please rewrite this project update carefully for the team today.",
+    "response": "Please rewrite this project update carefully [truncated]",
+    "valid": false,
+    "expected_error": "truncated"
   },
   {
     "id": "reject-unsafe-expansion",

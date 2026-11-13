@@ -1,5 +1,6 @@
 [
   {"case_id":"fix_grammar","pack_id":"writing-actions","operation_id":"fix_grammar","input":"i has a apple","parameters":{},"user_sha256":"f714ccd31b451bbd8ef1bad444f2f7b96fb469f636b397d12540ec5eba24c438"},
+  {"case_id":"fix-grammar-literal-unicode-escape","pack_id":"writing-actions","operation_id":"fix_grammar","input":"Literal \\u0041 and \\u{0042} stay text.","parameters":{},"user_sha256":"40a958cbe6458c61b447dd0fa7417e2124ccdd72de4ed0f6f75816bb4353f431"},
   {"case_id":"rewrite","pack_id":"writing-actions","operation_id":"rewrite","input":"unclear text ✨","parameters":{},"user_sha256":"540a6d5d115c9ce36762fc87c76968eec575ce3a7d2da8a27ca5255244808208"},
   {"case_id":"rewrite_core","pack_id":"writing-actions","operation_id":"rewrite_core","input":"unclear text ✨","parameters":{},"user_sha256":"540a6d5d115c9ce36762fc87c76968eec575ce3a7d2da8a27ca5255244808208"},
   {"case_id":"rewrite_shorten","pack_id":"writing-actions","operation_id":"rewrite_shorten","input":"unclear text ✨","parameters":{},"user_sha256":"540a6d5d115c9ce36762fc87c76968eec575ce3a7d2da8a27ca5255244808208"},

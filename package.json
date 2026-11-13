@@ -13,9 +13,16 @@
   "files": [
     "adapters",
     "contracts",
+    "docs",
     "fixtures",
     "schemas",
     "src",
+    "build.gradle.kts",
+    "settings.gradle.kts",
+    "gradle.properties",
+    "gradle",
+    "gradlew",
+    "gradlew.bat",
     "Package.swift",
     "README.md",
     "CHANGELOG.md"

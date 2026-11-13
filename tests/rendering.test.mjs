@@ -10,8 +10,31 @@ import {
   SemanticPromptContractError,
   validatePlainTextResponse,
 } from '../src/index.js';
+import { unicode17ExtendedGraphemeClusters } from '../src/unicode17-grapheme.js';
 
 const readJSON = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
+const readText = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+
+function parseUnicodeGraphemeBreakTest() {
+  return readText('fixtures/unicode/GraphemeBreakTest-17.0.0.txt')
+    .split('\n')
+    .map((line, index) => ({ line: index + 1, data: line.split('#', 1)[0].trim() }))
+    .filter(({ data }) => data.length > 0)
+    .map(({ line, data }) => {
+      const expectedClusters = [];
+      let current = '';
+      for (const token of data.split(/\s+/u)) {
+        if (token === '÷') {
+          if (current.length > 0) expectedClusters.push(current);
+          current = '';
+        } else if (token !== '×') {
+          current += String.fromCodePoint(Number.parseInt(token, 16));
+        }
+      }
+      if (current.length > 0) expectedClusters.push(current);
+      return { line, input: expectedClusters.join(''), expectedClusters };
+    });
+}
 
 test('every operation renders deterministic ordered messages and metadata', () => {
   const expectedModes = new Map([
@@ -83,6 +106,7 @@ test('canonical operation-specific plain-text validation accepts safe text and r
   const fixtures = [
     ...readJSON('fixtures/plain-text-validation/rewrite-replacements.json'),
     ...readJSON('fixtures/plain-text-validation/writing-actions.json'),
+    ...readJSON('fixtures/unicode/protected-emoji-cases.json'),
   ];
   for (const fixture of fixtures) {
     if (fixture.valid) {
@@ -107,6 +131,28 @@ test('canonical operation-specific plain-text validation accepts safe text and r
       );
     }
   }
+});
+
+test('JavaScript grapheme segmentation matches the official Unicode 17 conformance corpus', () => {
+  for (const fixture of parseUnicodeGraphemeBreakTest()) {
+    assert.deepEqual(
+      unicode17ExtendedGraphemeClusters(fixture.input),
+      fixture.expectedClusters,
+      `GraphemeBreakTest line ${fixture.line}`,
+    );
+  }
+});
+
+test('JavaScript protected emoji classification uses bundled Unicode 17 data', () => {
+  const unicode17EmojiMissingFromUnicode16 = String.fromCodePoint(0x1F6D8);
+  assert.throws(
+    () => validatePlainTextResponse({
+      operationId: 'translate',
+      source: `Keep ${unicode17EmojiMissingFromUnicode16} today.`,
+      response: 'Gardez ceci aujourd’hui.',
+    }),
+    (error) => error instanceof SemanticPromptContractError && error.message === 'protected_emoji',
+  );
 });
 
 test('exact rendering validation uses the selected policy and preserves continuation whitespace byte for byte', () => {

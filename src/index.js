@@ -1,4 +1,8 @@
 import { readFileSync } from 'node:fs';
+import {
+  containsUnicode17EmojiPresentation,
+  unicode17ExtendedGraphemeClusters,
+} from './unicode17-grapheme.js';
 
 const packageRoot = new URL('../', import.meta.url);
 
@@ -139,10 +143,7 @@ function coreAndBoundaryWhitespace(value) {
 
 function protectedTokens(value, type) {
   if (type === 'emoji') {
-    const segmenter = new Intl.Segmenter('en-US', { granularity: 'grapheme' });
-    return [...segmenter.segment(value)]
-      .map(({ segment }) => segment)
-      .filter((segment) => /\p{Emoji_Presentation}/u.test(segment));
+    return unicode17ExtendedGraphemeClusters(value).filter(containsUnicode17EmojiPresentation);
   }
   const patterns = {
     number: /[+-]?\d+(?:[.,:/-]\d+)*/gu,

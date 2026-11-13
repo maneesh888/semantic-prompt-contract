@@ -1,0 +1,74 @@
+[
+  {
+    "id": "emoji-modifier-on-text-presentation-base-removed",
+    "operation_id": "translate",
+    "source": "Keep ✌🏽 today.",
+    "response": "Gardez ceci aujourd’hui.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "emoji-modifier-on-text-presentation-base-changed",
+    "operation_id": "translate",
+    "source": "Keep 🖐🏻 today.",
+    "response": "Gardez 🖐🏽 aujourd’hui.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "regional-indicator-combining-mark-removed",
+    "operation_id": "translate",
+    "source": "Keep 🇺🇸́ today.",
+    "response": "Gardez 🇺🇸 aujourd’hui.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "emoji-combining-mark-changed",
+    "operation_id": "translate",
+    "source": "Keep 🙂́ today.",
+    "response": "Gardez 🙂̀ aujourd’hui.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "trailing-zwj-removed",
+    "operation_id": "translate",
+    "source": "Keep 🔥‍ today.",
+    "response": "Gardez 🔥 aujourd’hui.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "prepend-character-removed",
+    "operation_id": "translate",
+    "source": "Keep ؀🔥 today.",
+    "response": "Gardez 🔥 aujourd’hui.",
+    "valid": false,
+    "expected_error": "protected_emoji"
+  },
+  {
+    "id": "regional-indicator-combining-mark-preserved",
+    "operation_id": "translate",
+    "source": "Keep 🇺🇸́ today.",
+    "response": "Gardez 🇺🇸́ aujourd’hui.",
+    "valid": true,
+    "expected": "Gardez 🇺🇸́ aujourd’hui."
+  },
+  {
+    "id": "trailing-zwj-preserved",
+    "operation_id": "translate",
+    "source": "Keep 🔥‍ today.",
+    "response": "Gardez 🔥‍ aujourd’hui.",
+    "valid": true,
+    "expected": "Gardez 🔥‍ aujourd’hui."
+  },
+  {
+    "id": "prepend-character-preserved",
+    "operation_id": "translate",
+    "source": "Keep ؀🔥 today.",
+    "response": "Gardez ؀🔥 aujourd’hui.",
+    "valid": true,
+    "expected": "Gardez ؀🔥 aujourd’hui."
+  }
+]
